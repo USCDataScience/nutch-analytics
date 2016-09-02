@@ -12,7 +12,7 @@ mvn clean install
 
 ### Run Analytics
 
-java -jar analytics-1.0.jar -m local[*] -s PATH_TO_SEGMENT_FOLDER -o OUTPUT_FILE -l PATH_TO_LINK_DB
+java -cp analytics-1.0.jar gov.nasa.jpl.analytics.dump.Cdrv2Dump -m local[*] -s PATH_TO_SEGMENT_FOLDER -o OUTPUT_FILE -l PATH_TO_LINK_DB
 
 
 ### Contact Us
