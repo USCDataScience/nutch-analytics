@@ -53,6 +53,12 @@ object SegmentReader extends Loggable with Serializable {
     true
   }
 
+  def filterTextUrl(content: Content): Boolean = {
+    if (content.getContentType.contains("text") || content.getContentType.contains("ml"))
+      return true
+    false
+  }
+
   def toCdrV2(url: String, content: Content): Map[String, Any] = {
     val gson: Gson = new Gson()
     val timestamp = CommonUtil.formatTimestamp(content.getMetadata.get("Date"))
@@ -70,6 +76,13 @@ object SegmentReader extends Loggable with Serializable {
     cdrJson += (Constants.key.CDR_URL -> url)
     cdrJson += (Constants.key.CDR_CRAWL_TS -> timestamp)
     cdrJson
+  }
+
+  def getPlainText(sc: SparkContext, segmentPath: Path): Array[(String, String)] = {
+    val partRDD = sc.sequenceFile[String, Content](segmentPath.toString)
+    val filteredRDD = partRDD.filter({case(text, content) => filterTextUrl(content)})
+    val cdrRDD = filteredRDD.map({case(text, content) => (text, ParseUtil.parse(content).getFirst)})
+    cdrRDD.collect()
   }
 
   // Deprecated. Left for future use if any.

@@ -27,6 +27,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.HashMap;
 
 /**
  * Created by karanjeetsingh on 8/31/16.
@@ -80,6 +81,18 @@ public class CommonUtil {
             e.printStackTrace();
         }
         return hash;
+    }
+
+    public static HashMap<String, Integer> termFrequency(Iterable<String> terms) {
+        HashMap<String, Integer> map = new HashMap();
+        for (String term: terms) {
+            if (!map.containsKey(term)) {
+                map.put(term, 1);
+            } else {
+                map.put(term, map.get(term) + 1);
+            }
+        }
+        return map;
     }
 
     private static String ifNullString(String value) {

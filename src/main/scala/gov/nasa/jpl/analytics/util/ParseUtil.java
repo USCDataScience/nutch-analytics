@@ -17,6 +17,7 @@
 
 package gov.nasa.jpl.analytics.util;
 
+import com.google.common.base.Splitter;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.math3.util.Pair;
 import org.apache.nutch.protocol.Content;
@@ -36,19 +37,33 @@ import java.io.InputStream;
 public class ParseUtil {
 
     private static Logger LOG = LoggerFactory.getLogger(ParseUtil.class);
+    private static Splitter spaceSplitter = Splitter.on(' ').omitEmptyStrings().trimResults();
 
     public static Pair<String, Metadata> parse(Content content) {
         ByteArrayInputStream stream = new ByteArrayInputStream(content.getContent());
         try {
             return parse(stream);
+        } catch (Exception e) {
+            LOG.error("Exception occurred at URL: " + content.getUrl());
+            e.printStackTrace();
+        } catch (Error e) {
+            LOG.error("Error occurred at URL: " + content.getUrl());
+            e.printStackTrace();
         } finally {
             IOUtils.closeQuietly(stream);
         }
+        // Some Exception or Unexpected Error
+        return new Pair<String, Metadata>("", new Metadata());
     }
 
-    public static Pair<String, Metadata> parse(InputStream stream) {
+    public static Pair<String, Metadata> parse(InputStream stream) throws Exception, Error {
         Metadata metadata = new Metadata();
+        //WriteOutContentHandler outHandler = new WriteOutContentHandler();
+        //BodyContentHandler contentHandler = new BodyContentHandler(outHandler);
         try {
+            //AutoDetectParser parser = new AutoDetectParser();
+            //parser.parse(stream, contentHandler, metadata);
+            //return new Pair<String, Metadata>(outHandler.toString(), metadata);
             String text = new Tika().parseToString(stream, metadata);
             return new Pair<String, Metadata>(text, metadata);
         } catch (IOException e) {
@@ -59,7 +74,12 @@ public class ParseUtil {
             e.printStackTrace();
         }
         // Some Exception or Unexpected Error
-        return null;
+        return new Pair<String, Metadata>("", new Metadata());
+    }
+
+    public static Iterable<String> tokenize(String text) {
+        text = text.replaceAll("\\n", " ");
+        return spaceSplitter.split(text);
     }
 
 }
