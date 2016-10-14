@@ -36,6 +36,7 @@ class DDStats extends CliTool {
       .setMaster(sparkMaster)
       .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       .set("spark.kryo.classesToRegister", "org.apache.nutch.protocol.Content")
+      .set("spark.kryoserializer.buffer.max", "2040m")
     sc = new SparkContext(conf)
   }
 
@@ -78,14 +79,14 @@ class DDStats extends CliTool {
       println("Please provide Segment Path")
     }
 
-    var docs: Array[Map[String, Any]] = Array()
+    var docs: Array[String] = Array()
     for (part <- parts) {
-      docs ++= SegmentReader.getCdrV2Format(sc, part)
+      docs ++= SegmentReader.getUrl(sc, part)
       println("Processed " + part.toString)
     }
 
     val cdrRDD = sc.parallelize(docs)
-      .map(doc => doc.get(Constants.key.CDR_URL).get.toString)
+      //.map(doc => doc.get(Constants.key.CDR_URL).get.toString)
       //.reduceByKey((key1, key2) => key1)
       //.map({case(url, doc) => url})
 
