@@ -28,9 +28,6 @@ class DDStats extends CliTool {
   @Option(name = "-f", aliases = Array("--segmentFile"))
   var segmentFile: String = ""
 
-  @Option(name = "-l", aliases = Array("--linkDb"))
-  var linkDb: String = ""
-
 
   var sc: SparkContext = _
 
