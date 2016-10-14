@@ -17,7 +17,7 @@
 
 package gov.nasa.jpl.analytics.dump
 
-import java.io.File
+import java.io.{PrintWriter, File}
 
 import gov.nasa.jpl.analytics.base.{Loggable, CliTool}
 import gov.nasa.jpl.analytics.nutch.SegmentReader
@@ -69,7 +69,7 @@ class Cdrv2Dump extends CliTool {
     init()
 
     // Generate a list of segment parts
-    var parts: List[Path] = List()
+    var parts: List[String] = List()
     val nutchConfig: Configuration = NutchConfiguration.create()
     val partPattern: String = ".*" + File.separator + Content.DIR_NAME +
       File.separator + "part-[0-9]{5}" + File.separator + "data"
@@ -81,7 +81,7 @@ class Cdrv2Dump extends CliTool {
       if (next.isFile) {
         val filePath: Path = next.getPath
         if (filePath.toString.matches(partPattern)) {
-          parts = filePath :: parts
+          parts = filePath.toString :: parts
         }
       }
     }
@@ -97,9 +97,15 @@ class Cdrv2Dump extends CliTool {
       .reduceByKey((key1, key2) => key1)
       .map({case(url, doc) => doc})
 
-    cdrRDD.collect().foreach(printJson)
+    //cdrRDD.collect().foreach(printJson)
+    cdrRDD.collect().foreach(writeJson)
 
     sc.stop()
+  }
+
+  def writeJson(map: Map[String, Any]): Unit = {
+    val obj:JSONObject = new JSONObject(map)
+    new PrintWriter(outputDir + File.separator + "out.json") { write(obj.toJSONString); close}
   }
 
 }

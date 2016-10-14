@@ -4,7 +4,7 @@ import java.io.File
 
 import gov.nasa.jpl.analytics.base.{Loggable, CliTool}
 import gov.nasa.jpl.analytics.nutch.SegmentReader
-import gov.nasa.jpl.analytics.util.{CommonUtil, ParseUtil}
+import gov.nasa.jpl.analytics.util.ParseUtil
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{LocatedFileStatus, RemoteIterator, FileSystem, Path}
 import org.apache.nutch.protocol.Content
@@ -56,7 +56,7 @@ class CosineSimilarity extends CliTool {
     init()
 
     // Generate a list of segment parts
-    var parts: List[Path] = List()
+    var parts: List[String] = List()
     val nutchConfig: Configuration = NutchConfiguration.create()
     val partPattern: String = ".*" + File.separator + Content.DIR_NAME +
       File.separator + "part-[0-9]{5}" + File.separator + "data"
@@ -68,7 +68,7 @@ class CosineSimilarity extends CliTool {
       if (next.isFile) {
         val filePath: Path = next.getPath
         if (filePath.toString.matches(partPattern)) {
-          parts = filePath :: parts
+          parts = filePath.toString :: parts
         }
       }
     }

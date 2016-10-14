@@ -38,8 +38,8 @@ object SegmentReader extends Loggable with Serializable {
   val VERSION: String = "2"
 
   //TODO: If content type is image, get inLinks
-  def getCdrV2Format(sc: SparkContext, segmentPath: Path): Array[Map[String, Any]] = {
-    val partRDD = sc.sequenceFile[String, Content](segmentPath.toString)
+  def getCdrV2Format(sc: SparkContext, segmentPath: String): Array[Map[String, Any]] = {
+    val partRDD = sc.sequenceFile[String, Content](segmentPath)
     val filteredRDD = partRDD.filter({case(text, content) => filterUrl(content)})
     val cdrRDD = filteredRDD.map({case(text, content) => (toCdrV2(text, content))})
     //println(partRDD.first()._1.toString)
@@ -78,8 +78,8 @@ object SegmentReader extends Loggable with Serializable {
     cdrJson
   }
 
-  def getPlainText(sc: SparkContext, segmentPath: Path): Array[(String, String)] = {
-    val partRDD = sc.sequenceFile[String, Content](segmentPath.toString)
+  def getPlainText(sc: SparkContext, segmentPath: String): Array[(String, String)] = {
+    val partRDD = sc.sequenceFile[String, Content](segmentPath)
     val filteredRDD = partRDD.filter({case(text, content) => filterTextUrl(content)})
     val cdrRDD = filteredRDD.map({case(text, content) => (text, ParseUtil.parse(content).getFirst)})
     cdrRDD.collect()

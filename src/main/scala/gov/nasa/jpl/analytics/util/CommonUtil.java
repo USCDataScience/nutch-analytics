@@ -23,6 +23,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
@@ -93,6 +95,36 @@ public class CommonUtil {
             }
         }
         return map;
+    }
+
+    public static String getHost(String url) {
+        //return InternetDomainName.from(url).topPrivateDomain().toString();
+        /*if () {
+            return InternetDomainName.from(url).topPrivateDomain().toString();
+        } else {
+            System.out.println("Omg, It's not a valid URL: " + url);
+            return "";
+        }*/
+
+        URI uri = null;
+        try {
+            uri = new URI(url);
+        } catch (URISyntaxException e) {
+            System.out.println("Omg, It's not a valid URL: " + url);
+            // Do Nothing & Return Empty ""
+            return "";
+        }
+        String host = uri.getHost();
+        if (host != null) {
+            if (host.startsWith("www.")) {
+                return host.substring(4);
+            } else {
+                return host;
+            }
+        } else {
+            System.out.println("Omg, www not present: " + url);
+            return "";
+        }
     }
 
     private static String ifNullString(String value) {

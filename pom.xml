@@ -21,6 +21,7 @@
     <json.simple.version>1.1.1</json.simple.version>
     <tika.version>1.13</tika.version>
     <gson.version>2.7</gson.version>
+    <guava.version>19.0</guava.version>
 
     <!-- Main Class -->
     <exec.mainClass>gov.nasa.jpl.analytics.dump.Dumper</exec.mainClass>
@@ -73,6 +74,16 @@
       <groupId>com.google.code.gson</groupId>
       <artifactId>gson</artifactId>
       <version>${gson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.spark</groupId>
+      <artifactId>spark-mllib_2.10</artifactId>
+      <version>${spark.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>${guava.version}</version>
     </dependency>
 
 
