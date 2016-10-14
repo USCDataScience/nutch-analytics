@@ -1,9 +1,8 @@
 package gov.nasa.jpl.analytics.tools.stats
 
-import java.io.{FileNotFoundException, BufferedReader, File}
+import java.io.{FileNotFoundException, File}
 import java.util.Scanner
 
-import breeze.io.TextReader.{InputStreamReader, FileReader}
 import gov.nasa.jpl.analytics.base.{CliTool, Loggable}
 import gov.nasa.jpl.analytics.nutch.SegmentReader
 import gov.nasa.jpl.analytics.util.{CommonUtil, Constants}

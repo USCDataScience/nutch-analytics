@@ -42,10 +42,10 @@ public class ParseUtil {
     public static Pair<String, Metadata> parse(Content content) {
         ByteArrayInputStream stream = new ByteArrayInputStream(content.getContent());
         try {
-            if (content.getContentType().contains("image"))
-                return new Pair<String, Metadata>("", new Metadata());
-            else
+            if (content.getContentType().contains("text") || content.getContentType().contains("ml"))
                 return parse(stream);
+            else
+                return new Pair<String, Metadata>("", new Metadata());
         } catch (Exception e) {
             LOG.error("Exception occurred at URL: " + content.getUrl());
             e.printStackTrace();
