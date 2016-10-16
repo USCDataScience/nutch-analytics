@@ -17,6 +17,7 @@
 
 package gov.nasa.jpl.analytics.util;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.nutch.segment.SegmentMerger;
 import org.apache.nutch.util.NutchConfiguration;
@@ -130,7 +131,10 @@ public class CommonUtil {
         }
     }
 
-    public static void mergeSegments(Path out, Path[] segments) {
+
+    public static void mergeSegments(Path out, Path[] segments, Configuration config) {
+        Configuration myConfig = NutchConfiguration.create();
+        System.out.println(segments.toString());
         SegmentMerger merger = new SegmentMerger(NutchConfiguration.create());
         try {
             merger.merge(out, segments, false, false, 0);

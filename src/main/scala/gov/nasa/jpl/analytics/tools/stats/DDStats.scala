@@ -11,6 +11,7 @@ import org.apache.hadoop.fs.{LocatedFileStatus, RemoteIterator, FileSystem, Path
 import org.apache.nutch.protocol.Content
 import org.apache.nutch.segment.SegmentMerger
 import org.apache.nutch.util.NutchConfiguration
+import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 import org.kohsuke.args4j.Option
 
@@ -86,26 +87,39 @@ class DDStats extends CliTool {
       println("Please provide Segment Path")
     }
 
-    println("Merging Segments...")
-    CommonUtil.mergeSegments(new Path("mergedSegment"), parts.toArray)
-    println("Segments are now Merged")
+    //println("Merging Segments...")
+    //CommonUtil.mergeSegments(new Path("mergedSegment"), parts.toArray)
+    //println("Segments are now Merged")
 
     var docs: Array[String] = Array()
-    //for (part <- parts) {
+    var rdds: Seq[RDD[Tuple2[String, Content]]] = Seq()
+    for (part <- parts) {
+      rdds :+= sc.sequenceFile[String, Content](part.toString)
+    }
+    println("Number of Segments to process: " + rdds.length)
+    val segRDD:RDD[Tuple2[String, Content]] = sc.union(rdds)
+    //println(segRDD.collect().length)
+    val filteredRDD = segRDD.filter({case(text, content) => SegmentReader.filterUrl(content)})
+    val urlRDD = filteredRDD.map({case(url, content) => Some(url).get.toString})
+
+    val hostRDD = urlRDD.map(url => CommonUtil.getHost(url)).distinct().collect()
+    println("Number of Webpages: " + urlRDD.distinct().collect().length)
+    println("Number of Hosts: " + hostRDD.length)
+
     //  docs ++= SegmentReader.getUrl(sc, part)
     //  println("Processed " + part.toString)
     //}
-    docs ++= SegmentReader.getUrl(sc, "mergedSegment")
+    //docs ++= SegmentReader.getUrl(sc, "mergedSegment")
 
-    val cdrRDD = sc.parallelize(docs)
+    //val cdrRDD = sc.parallelize(docs)
       //.map(doc => doc.get(Constants.key.CDR_URL).get.toString)
       //.reduceByKey((key1, key2) => key1)
       //.map({case(url, doc) => url})
 
-    val hostRDD = cdrRDD.map(url => CommonUtil.getHost(url)).distinct().collect()
+    //val hostRDD = cdrRDD.map(url => CommonUtil.getHost(url)).distinct().collect()
 
-    println("Number of Webpages: " + cdrRDD.distinct().collect().length)
-    println("Number of Hosts: " + hostRDD.length)
+    //println("Number of Webpages: " + cdrRDD.distinct().collect().length)
+    //println("Number of Hosts: " + hostRDD.length)
 
 
   }
