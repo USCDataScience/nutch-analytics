@@ -17,6 +17,9 @@
 
 package gov.nasa.jpl.analytics.util;
 
+import org.apache.hadoop.fs.Path;
+import org.apache.nutch.segment.SegmentMerger;
+import org.apache.nutch.util.NutchConfiguration;
 import org.apache.nutch.util.TableUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -124,6 +127,16 @@ public class CommonUtil {
         } else {
             System.out.println("Omg, www not present: " + url);
             return "";
+        }
+    }
+
+    public static void mergeSegments(Path out, Path[] segments) {
+        SegmentMerger merger = new SegmentMerger(NutchConfiguration.create());
+        try {
+            merger.merge(out, segments, false, false, 0);
+        } catch (Exception e) {
+            System.out.println("Merging Failed");
+            e.printStackTrace();
         }
     }
 

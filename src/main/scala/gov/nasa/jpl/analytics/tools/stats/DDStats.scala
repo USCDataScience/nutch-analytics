@@ -9,6 +9,7 @@ import gov.nasa.jpl.analytics.util.{CommonUtil, Constants}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{LocatedFileStatus, RemoteIterator, FileSystem, Path}
 import org.apache.nutch.protocol.Content
+import org.apache.nutch.segment.SegmentMerger
 import org.apache.nutch.util.NutchConfiguration
 import org.apache.spark.{SparkConf, SparkContext}
 import org.kohsuke.args4j.Option
@@ -23,6 +24,12 @@ class DDStats extends CliTool {
 
   @Option(name = "-s", aliases = Array("--segmentDir"))
   var segmentDir: String = ""
+
+  @Option(name = "-n", aliases = Array("--nameNode"))
+  var nameNode: String = "localhost"
+
+  @Option(name = "-p", aliases = Array("--nameNodePort"))
+  var nameNodePort: Integer = 50070
 
   @Option(name = "-f", aliases = Array("--segmentFile"))
   var segmentFile: String = ""
@@ -46,12 +53,12 @@ class DDStats extends CliTool {
     init()
 
     // Generate a list of segment parts
-    var parts: List[String] = List()
+    var parts: List[Path] = List()
     if (!segmentDir.isEmpty) {
-      val nutchConfig: Configuration = NutchConfiguration.create()
+      val config: Configuration = sc.hadoopConfiguration
       val partPattern: String = ".*" + File.separator + Content.DIR_NAME +
         File.separator + "part-[0-9]{5}" + File.separator + "data"
-      val fs: FileSystem = FileSystem.get(nutchConfig)
+      val fs: FileSystem = FileSystem.get(config)
       val segmentDirPath: Path = new Path(segmentDir.toString)
       val segmentFiles: RemoteIterator[LocatedFileStatus] = fs.listFiles(segmentDirPath, true)
       while (segmentFiles.hasNext) {
@@ -59,7 +66,7 @@ class DDStats extends CliTool {
         if (next.isFile) {
           val filePath: Path = next.getPath
           if (filePath.toString.matches(partPattern)) {
-            parts = filePath.toString :: parts
+            parts = filePath :: parts
           }
         }
       }
@@ -68,7 +75,7 @@ class DDStats extends CliTool {
         val scanner: Scanner = new Scanner(new File(segmentFile))
         while(scanner.hasNext) {
           val line: String = scanner.nextLine()
-          parts = line :: parts
+          parts = new Path(line) :: parts
         }
         scanner.close()
       } catch {
@@ -79,11 +86,16 @@ class DDStats extends CliTool {
       println("Please provide Segment Path")
     }
 
+    println("Merging Segments...")
+    CommonUtil.mergeSegments(new Path("mergedSegment"), parts.toArray)
+    println("Segments are now Merged")
+
     var docs: Array[String] = Array()
-    for (part <- parts) {
-      docs ++= SegmentReader.getUrl(sc, part)
-      println("Processed " + part.toString)
-    }
+    //for (part <- parts) {
+    //  docs ++= SegmentReader.getUrl(sc, part)
+    //  println("Processed " + part.toString)
+    //}
+    docs ++= SegmentReader.getUrl(sc, "mergedSegment")
 
     val cdrRDD = sc.parallelize(docs)
       //.map(doc => doc.get(Constants.key.CDR_URL).get.toString)
