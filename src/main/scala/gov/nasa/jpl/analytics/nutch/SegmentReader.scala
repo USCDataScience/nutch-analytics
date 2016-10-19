@@ -87,9 +87,8 @@ object SegmentReader extends Loggable with Serializable {
     cdrRDD.collect()
   }
 
-  def listFromDir(segmentDir: String): List[Path] = {
+  def listFromDir(segmentDir: String, config: Configuration): List[Path] = {
     var parts: List[Path] = List()
-    val config: Configuration = sc.hadoopConfiguration
     val partPattern: String = ".*" + File.separator + Content.DIR_NAME +
       File.separator + "part-[0-9]{5}" + File.separator + "data"
     val fs: FileSystem = FileSystem.get(config)

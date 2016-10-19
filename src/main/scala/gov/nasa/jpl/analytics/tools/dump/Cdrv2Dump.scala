@@ -22,6 +22,7 @@ import java.io.{PrintWriter, File}
 import gov.nasa.jpl.analytics.base.{Loggable, CliTool}
 import gov.nasa.jpl.analytics.nutch.SegmentReader
 import gov.nasa.jpl.analytics.util.Constants
+import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.nutch.protocol.Content
 import org.apache.spark.rdd.RDD
@@ -62,6 +63,7 @@ class Cdrv2Dump extends CliTool {
       .setMaster(sparkMaster)
       .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       .set("spark.kryo.classesToRegister", "org.apache.nutch.protocol.Content")
+      .set("spark.kryoserializer.buffer.max", "2040m")
     sc = new SparkContext(conf)
   }
 
@@ -72,8 +74,9 @@ class Cdrv2Dump extends CliTool {
 
     // Generate a list of segment parts
     var parts: List[Path] = List()
+    val config: Configuration = sc.hadoopConfiguration
     if (!segmentDir.isEmpty) {
-      parts = SegmentReader.listFromDir(segmentDir)
+      parts = SegmentReader.listFromDir(segmentDir, config)
     } else if (!segmentFile.isEmpty) {
       parts = SegmentReader.listFromFile(segmentFile)
     } else {

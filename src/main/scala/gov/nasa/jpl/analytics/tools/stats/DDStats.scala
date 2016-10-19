@@ -3,6 +3,7 @@ package gov.nasa.jpl.analytics.tools.stats
 import gov.nasa.jpl.analytics.base.{CliTool, Loggable}
 import gov.nasa.jpl.analytics.nutch.SegmentReader
 import gov.nasa.jpl.analytics.util.CommonUtil
+import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.nutch.protocol.Content
 import org.apache.spark.rdd.RDD
@@ -43,8 +44,9 @@ class DDStats extends CliTool {
 
     // Generate a list of segment parts
     var parts: List[Path] = List()
+    val config: Configuration = sc.hadoopConfiguration
     if (!segmentDir.isEmpty) {
-      parts = SegmentReader.listFromDir(segmentDir)
+      parts = SegmentReader.listFromDir(segmentDir, config)
     } else if (!segmentFile.isEmpty) {
       parts = SegmentReader.listFromFile(segmentFile)
     } else {
