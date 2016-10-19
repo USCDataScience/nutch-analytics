@@ -120,7 +120,7 @@ class CosineSimilarity extends CliTool {
     println("Top URLs: ")
     println(cosineList.take(10).foreach(println))
     println()
-    println("Last URLs: ")
+    println("Bottom URLs: ")
     println(cosineList.takeRight(10).foreach(println))
 
     // Stopping Spark

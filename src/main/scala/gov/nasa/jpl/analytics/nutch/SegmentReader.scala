@@ -17,12 +17,16 @@
 
 package gov.nasa.jpl.analytics.nutch
 
+import java.io.{FileNotFoundException, File}
+import java.util.Scanner
+
 import com.google.gson.Gson
 import gov.nasa.jpl.analytics.base.Loggable
 import gov.nasa.jpl.analytics.model.CdrV2Format
 import gov.nasa.jpl.analytics.util.{ParseUtil, CommonUtil, Constants}
 import org.apache.commons.math3.util.Pair
-import org.apache.hadoop.fs.Path
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{LocatedFileStatus, RemoteIterator, FileSystem, Path}
 import org.apache.nutch.protocol.Content
 import org.apache.spark.SparkContext
 import org.apache.tika.metadata.Metadata
@@ -36,16 +40,6 @@ object SegmentReader extends Loggable with Serializable {
   val TEAM: String = "JPL"
   val CRAWLER: String = "Nutch 1.12"
   val VERSION: String = "2"
-
-  //TODO: If content type is image, get inLinks
-  def getCdrV2Format(sc: SparkContext, segmentPath: String): Array[Map[String, Any]] = {
-    val partRDD = sc.sequenceFile[String, Content](segmentPath)
-    val filteredRDD = partRDD.filter({case(text, content) => filterUrl(content)})
-    val cdrRDD = filteredRDD.map({case(text, content) => (toCdrV2(text, content))})
-    //println(partRDD.first()._1.toString)
-    //println(partRDD.first()._2.getContentType)
-    cdrRDD.collect()
-  }
 
   def filterUrl(content: Content): Boolean = {
     if (content.getContent == null || content.getContent.isEmpty || content.getContent.length < 150)
@@ -91,6 +85,41 @@ object SegmentReader extends Loggable with Serializable {
     val filteredRDD = partRDD.filter({case(text, content) => filterTextUrl(content)})
     val cdrRDD = filteredRDD.map({case(text, content) => (text, ParseUtil.parse(content).getFirst)})
     cdrRDD.collect()
+  }
+
+  def listFromDir(segmentDir: String): List[Path] = {
+    var parts: List[Path] = List()
+    val config: Configuration = sc.hadoopConfiguration
+    val partPattern: String = ".*" + File.separator + Content.DIR_NAME +
+      File.separator + "part-[0-9]{5}" + File.separator + "data"
+    val fs: FileSystem = FileSystem.get(config)
+    val segmentDirPath: Path = new Path(segmentDir.toString)
+    val segmentFiles: RemoteIterator[LocatedFileStatus] = fs.listFiles(segmentDirPath, true)
+    while (segmentFiles.hasNext) {
+      val next: LocatedFileStatus = segmentFiles.next()
+      if (next.isFile) {
+        val filePath: Path = next.getPath
+        if (filePath.toString.matches(partPattern)) {
+          parts = filePath :: parts
+        }
+      }
+    }
+    parts
+  }
+
+  def listFromFile(segmentFile: String): List[Path] = {
+    var parts: List[Path] = List()
+    try {
+      val scanner: Scanner = new Scanner(new File(segmentFile))
+      while(scanner.hasNext) {
+        val line: String = scanner.nextLine()
+        parts = new Path(line) :: parts
+      }
+      scanner.close()
+    } catch {
+      case e: FileNotFoundException => println("Segment File Path is Wrong!!")
+    }
+    parts
   }
 
   // Deprecated. Left for future use if any.

@@ -132,6 +132,8 @@ public class CommonUtil {
     }
 
 
+
+
     public static void mergeSegments(Path out, Path[] segments, Configuration config) {
         Configuration myConfig = NutchConfiguration.create();
         System.out.println(segments.toString());
