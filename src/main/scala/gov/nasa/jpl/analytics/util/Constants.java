@@ -26,6 +26,8 @@ public interface Constants {
 
         String CDR_ID = "_id";
 
+        String CDR_DOC_TYPE = "doc_type";
+
         String CDR_CONTENT_TYPE = "content-type";
 
         String CDR_CRAWL_DATA = "crawl_data";

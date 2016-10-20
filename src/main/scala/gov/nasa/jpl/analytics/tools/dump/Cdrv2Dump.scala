@@ -15,11 +15,12 @@
  * limitations under the License.
  */
 
-package gov.nasa.jpl.analytics.dump
+package gov.nasa.jpl.analytics.tools.dump
 
 import java.io._
 
 import gov.nasa.jpl.analytics.base.{Loggable, CliTool}
+import gov.nasa.jpl.analytics.model.CdrDumpParam
 import gov.nasa.jpl.analytics.nutch.SegmentReader
 import gov.nasa.jpl.analytics.util.{CommonUtil, Constants}
 import org.apache.hadoop.conf.Configuration
@@ -51,6 +52,9 @@ class Cdrv2Dump extends CliTool {
   @Option(name = "-l", aliases = Array("--linkDb"))
   var linkDb: String = ""
 
+  @Option(name = "-t", aliases = Array("--type"))
+  var docType: String = ""
+
   @Option(name = "-o", aliases = Array("--outputDir"))
   var outputDir: String = ""
 
@@ -72,15 +76,17 @@ class Cdrv2Dump extends CliTool {
     // Initialize SparkContext
     init()
     val config: Configuration = sc.hadoopConfiguration
+    val dumpParam: CdrDumpParam = new CdrDumpParam()
+    dumpParam.docType = docType
 
     // Check & Create Output Directory
     val fs: FileSystem = FileSystem.get(config)
     val outPath: Path = new Path(outputDir)
-    if (!fs.exists(outPath) || !fs.isDirectory(outPath)) {
-      println("Please provide a non created directory path")
+    if (fs.exists(outPath)) {
+      println("Please provide a non existing directory path")
       System.exit(1)
     }
-    CommonUtil.makeSafeDir(outputDir)
+    //CommonUtil.makeSafeDir(outputDir)
 
     // Generate a list of segment parts
     var parts: List[Path] = List()
@@ -106,7 +112,7 @@ class Cdrv2Dump extends CliTool {
     // Filtering & Operations
     //TODO: If content type is image, get inLinks
     val filteredRDD =segRDD.filter({case(text, content) => SegmentReader.filterUrl(content)})
-    val cdrRDD = filteredRDD.map({case(text, content) => SegmentReader.toCdrV2(text, content)})
+    val cdrRDD = filteredRDD.map({case(text, content) => SegmentReader.toCdrV2(text, content, dumpParam)})
 
     // Deduplication & Dumping Segments
     val dumpRDD = cdrRDD.map(doc => (doc.get(Constants.key.CDR_ID).toString, doc))

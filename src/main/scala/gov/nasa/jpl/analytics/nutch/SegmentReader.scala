@@ -22,7 +22,7 @@ import java.util.Scanner
 
 import com.google.gson.Gson
 import gov.nasa.jpl.analytics.base.Loggable
-import gov.nasa.jpl.analytics.model.CdrV2Format
+import gov.nasa.jpl.analytics.model.{CdrDumpParam, CdrV2Format}
 import gov.nasa.jpl.analytics.util.{ParseUtil, CommonUtil, Constants}
 import org.apache.commons.math3.util.Pair
 import org.apache.hadoop.conf.Configuration
@@ -53,12 +53,13 @@ object SegmentReader extends Loggable with Serializable {
     false
   }
 
-  def toCdrV2(url: String, content: Content): Map[String, Any] = {
+  def toCdrV2(url: String, content: Content, dumpParam: CdrDumpParam): Map[String, Any] = {
     val gson: Gson = new Gson()
     //LOG.info("Processing URL: " + url)
     val timestamp = CommonUtil.formatTimestamp(content.getMetadata.get("Date"))
     val parsedContent: Pair[String, Metadata] = ParseUtil.parse(content)
     var cdrJson: Map[String, Any] = Map(Constants.key.CDR_ID -> CommonUtil.hashString(url + "-" + timestamp))
+    cdrJson += (Constants.key.CDR_DOC_TYPE -> dumpParam.docType)
     cdrJson += (Constants.key.CDR_CONTENT_TYPE -> content.getContentType)
     cdrJson += (Constants.key.CDR_RAW_CONTENT -> new String(content.getContent))
     cdrJson += (Constants.key.CDR_TEXT -> parsedContent.getFirst)
