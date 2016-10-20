@@ -121,12 +121,12 @@ class CosineSimilarity extends CliTool {
     val cosineList: Array[(String, Double)] = product.collect()
 
     println("Top URLs: ")
-    cosineList.take(10).foreach(println)
-    cosineList.take(10).foreach({case (url, score) => appendToFile(outputDir + File.separator + "top.txt", url)})
+    cosineList.take(20).foreach(println)
+    cosineList.take(20).foreach({case (url, score) => appendToFile(outputDir + File.separator + "top.txt", url)})
     println()
     println("Bottom URLs: ")
-    cosineList.takeRight(10).foreach(println)
-    cosineList.take(10).foreach({case (url, score) => appendToFile(outputDir + File.separator + "bottom.txt", url)})
+    cosineList.takeRight(20).foreach(println)
+    cosineList.takeRight(20).foreach({case (url, score) => appendToFile(outputDir + File.separator + "bottom.txt", url)})
 
     // Stopping Spark
     sc.stop()
