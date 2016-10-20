@@ -55,7 +55,7 @@ object SegmentReader extends Loggable with Serializable {
 
   def toCdrV2(url: String, content: Content): Map[String, Any] = {
     val gson: Gson = new Gson()
-    LOG.info("Processing URL: " + url)
+    //LOG.info("Processing URL: " + url)
     val timestamp = CommonUtil.formatTimestamp(content.getMetadata.get("Date"))
     val parsedContent: Pair[String, Metadata] = ParseUtil.parse(content)
     var cdrJson: Map[String, Any] = Map(Constants.key.CDR_ID -> CommonUtil.hashString(url + "-" + timestamp))

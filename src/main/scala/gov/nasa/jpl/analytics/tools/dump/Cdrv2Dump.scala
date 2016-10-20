@@ -17,13 +17,13 @@
 
 package gov.nasa.jpl.analytics.dump
 
-import java.io.{PrintWriter, File}
+import java.io._
 
 import gov.nasa.jpl.analytics.base.{Loggable, CliTool}
 import gov.nasa.jpl.analytics.nutch.SegmentReader
-import gov.nasa.jpl.analytics.util.Constants
+import gov.nasa.jpl.analytics.util.{CommonUtil, Constants}
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.nutch.protocol.Content
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
@@ -71,10 +71,19 @@ class Cdrv2Dump extends CliTool {
 
     // Initialize SparkContext
     init()
+    val config: Configuration = sc.hadoopConfiguration
+
+    // Check & Create Output Directory
+    val fs: FileSystem = FileSystem.get(config)
+    val outPath: Path = new Path(outputDir)
+    if (!fs.exists(outPath) || !fs.isDirectory(outPath)) {
+      println("Please provide a non created directory path")
+      System.exit(1)
+    }
+    CommonUtil.makeSafeDir(outputDir)
 
     // Generate a list of segment parts
     var parts: List[Path] = List()
-    val config: Configuration = sc.hadoopConfiguration
     if (!segmentDir.isEmpty) {
       parts = SegmentReader.listFromDir(segmentDir, config)
     } else if (!segmentFile.isEmpty) {
@@ -97,25 +106,45 @@ class Cdrv2Dump extends CliTool {
     // Filtering & Operations
     //TODO: If content type is image, get inLinks
     val filteredRDD =segRDD.filter({case(text, content) => SegmentReader.filterUrl(content)})
-    val cdrRDD = filteredRDD.map({case(text, content) => (SegmentReader.toCdrV2(text, content))})
+    val cdrRDD = filteredRDD.map({case(text, content) => SegmentReader.toCdrV2(text, content)})
 
     // Deduplication & Dumping Segments
     val dumpRDD = cdrRDD.map(doc => (doc.get(Constants.key.CDR_ID).toString, doc))
                         .reduceByKey((key1, key2) => key1)
-                        .map({case(id, doc) => doc})
-    dumpRDD.collect().foreach(writeJson)
+                        .map({case(id, doc) => new JSONObject(doc).toJSONString})
+
+    dumpRDD.saveAsTextFile(outputDir)
+
+    // Write to Local File System
+    /*
+    val writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputDir + File.separator + "out.json")))
+    for (doc <- docs) {
+      writer.write(doc + "\n")
+    }
+    writer.close()
+    */
 
     sc.stop()
-  }
-
-  def writeJson(map: Map[String, Any]): Unit = {
-    val obj:JSONObject = new JSONObject(map)
-    new PrintWriter(outputDir + File.separator + "out.json") { write(obj.toJSONString); close}
   }
 
 }
 
 object Cdrv2Dump extends Loggable with Serializable {
+
+  /**
+    * Used for reading/writing to database, files, etc.
+    * Code From the book "Beginning Scala"
+    * http://www.amazon.com/Beginning-Scala-David-Pollak/dp/1430219890
+    */
+  def using[A <: {def close(): Unit}, B](param: A)(f: A => B): B =
+    try { f(param) } finally { param.close() }
+
+  def appendJson(filename: String, data: String) =
+    using(new FileWriter(filename, true)) {
+    fileWriter => using(new PrintWriter(fileWriter)) {
+      printWriter => printWriter.println(data)
+    }
+  }
 
   def printJson(map: Map[String, Any]): Unit = {
     val obj:JSONObject = new JSONObject(map)

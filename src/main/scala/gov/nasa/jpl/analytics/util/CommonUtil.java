@@ -25,6 +25,7 @@ import org.apache.nutch.util.TableUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -131,8 +132,12 @@ public class CommonUtil {
         }
     }
 
-
-
+    public static void makeSafeDir(String dirPath) throws Exception {
+        File dir = new File(dirPath);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+    }
 
     public static void mergeSegments(Path out, Path[] segments, Configuration config) {
         Configuration myConfig = NutchConfiguration.create();
