@@ -89,7 +89,7 @@ class CosineSimilarity extends CliTool {
     val parsedRDD = filteredRDD.map({case(text, content) => (text, ParseUtil.parse(content).getFirst)})
 
     val modelRDD = sc.textFile(knowledgeBase)
-      .map({case doc => (doc.toString.split("\\t")(0), ParseUtil.tokenize(doc.toString.split("\\t")(1)))})
+      .map({case doc => (doc.toString.split("|_|")(0), ParseUtil.tokenize(doc.toString.split("|_|")(1)))})
 
     val tf: JavaRDD[Vector] = new HashingTF().transform(modelRDD.map({case (url, terms) => terms}))
     //println("TF - " + tf.first().toString)
