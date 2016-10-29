@@ -64,13 +64,21 @@ class DDStats extends CliTool {
 
     // Union of all RDDs
     val segRDD:RDD[Tuple2[String, Content]] = sc.union(rdds)
+    segRDD.saveAsSequenceFile("allSegments")
 
     // Filtering & Operations
     val filteredRDD = segRDD.filter({case(text, content) => SegmentReader.filterUrl(content)})
-    val urlRDD = filteredRDD.map({case(url, content) => Some(url).get.toString})
+    val urlRDD = filteredRDD.map({case(url, content) => Some(url).get.toString}).distinct()
     val hostRDD = urlRDD.map(url => CommonUtil.getHost(url)).distinct().collect()
-    println("Number of Web Pages: " + urlRDD.distinct().collect().length)
+
+    urlRDD.map(url => (CommonUtil.getHost(url), 1))
+      .reduceByKey(_ + _, 1)
+      .map(item => item.swap)
+      .sortByKey(false, 1)
+      .map(item => item.swap)
+      .saveAsTextFile("host-url")
     println("Number of Hosts: " + hostRDD.length)
+    println("Number of Web Pages: " + urlRDD.distinct().collect().length)
 
     sc.stop()
   }

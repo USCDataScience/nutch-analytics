@@ -22,9 +22,11 @@ import java.io._
 import gov.nasa.jpl.analytics.base.{Loggable, CliTool}
 import gov.nasa.jpl.analytics.model.CdrDumpParam
 import gov.nasa.jpl.analytics.nutch.SegmentReader
-import gov.nasa.jpl.analytics.util.{CommonUtil, Constants}
+import gov.nasa.jpl.analytics.util.{Constants}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.nutch.crawl.{Inlink, LinkDb, Inlinks}
+import org.apache.nutch.metadata.Metadata
 import org.apache.nutch.protocol.Content
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
@@ -66,8 +68,9 @@ class Cdrv2Dump extends CliTool {
     conf.setAppName("CDRv2Dumper")
       .setMaster(sparkMaster)
       .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-      .set("spark.kryo.classesToRegister", "org.apache.nutch.protocol.Content")
+      .set("spark.kryo.classesToRegister", "java.util.HashSet,java.util.HashMap")
       .set("spark.kryoserializer.buffer.max", "2040m")
+    conf.registerKryoClasses(Array(classOf[Content], classOf[Inlinks], classOf[Inlink], classOf[Metadata]))
     sc = new SparkContext(conf)
   }
 
@@ -88,6 +91,17 @@ class Cdrv2Dump extends CliTool {
     }
     //CommonUtil.makeSafeDir(outputDir)
 
+    // Reading LinkDb
+    var linkDbParts: List[Path] = List()
+    linkDbParts = SegmentReader.listFromDir(linkDb, config, LinkDb.CURRENT_NAME)
+
+    var linkDbRdds: Seq[RDD[Tuple2[String, Inlinks]]] = Seq()
+    for (part <- linkDbParts) {
+      linkDbRdds :+= sc.sequenceFile[String, Inlinks](part.toString)
+    }
+    println("Number of LinkDb Segments to process: " + linkDbRdds.length)
+    val linkDbRdd = sc.union(linkDbRdds)
+
     // Generate a list of segment parts
     var parts: List[Path] = List()
     if (!segmentDir.isEmpty) {
@@ -106,17 +120,19 @@ class Cdrv2Dump extends CliTool {
     }
     println("Number of Segments to process: " + rdds.length)
 
-    // Union of all RDDs
-    val segRDD:RDD[Tuple2[String, Content]] = sc.union(rdds)
+    // Union of all RDDs & Joining it with LinkDb
+    val segRDD:RDD[Tuple3[String, Content, Inlinks]] = sc.union(rdds).join(linkDbRdd).
+      map{case (k, (ls, rs)) => (k, ls, rs)}
 
     // Filtering & Operations
     //TODO: If content type is image, get inLinks
-    val filteredRDD =segRDD.filter({case(text, content) => SegmentReader.filterUrl(content)})
-    val cdrRDD = filteredRDD.map({case(text, content) => SegmentReader.toCdrV2(text, content, dumpParam)})
+    val filteredRDD =segRDD.filter({case(text, content, inlinks) => SegmentReader.filterUrl(content)})
+    val cdrRDD = filteredRDD.map({case(text, content, inlinks) => SegmentReader.toCdrV2(text, content, dumpParam,
+      inlinks)})
 
     // Deduplication & Dumping Segments
     val dumpRDD = cdrRDD.map(doc => (doc.get(Constants.key.CDR_ID).toString, doc))
-                        .reduceByKey((key1, key2) => key1)
+                        //.reduceByKey((key1, key2) => key1)
                         .map({case(id, doc) => new JSONObject(doc).toJSONString})
 
     dumpRDD.saveAsTextFile(outputDir)

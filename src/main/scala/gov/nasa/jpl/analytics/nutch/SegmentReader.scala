@@ -27,10 +27,13 @@ import gov.nasa.jpl.analytics.util.{ParseUtil, CommonUtil, Constants}
 import org.apache.commons.math3.util.Pair
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{LocatedFileStatus, RemoteIterator, FileSystem, Path}
+import org.apache.nutch.crawl.{Inlinks, Inlink}
 import org.apache.nutch.protocol.Content
 import org.apache.spark.SparkContext
 import org.apache.tika.metadata.Metadata
 import org.json.JSONObject
+
+import scala.collection.JavaConverters._
 
 /**
   * Created by karanjeetsingh on 8/30/16.
@@ -40,6 +43,7 @@ object SegmentReader extends Loggable with Serializable {
   val TEAM: String = "JPL"
   val CRAWLER: String = "Nutch 1.12"
   val VERSION: String = "2"
+  val MAX_INLINKS: Int = 5000
 
   def filterUrl(content: Content): Boolean = {
     if (content.getContent == null || content.getContent.isEmpty || content.getContent.length < 150)
@@ -48,12 +52,13 @@ object SegmentReader extends Loggable with Serializable {
   }
 
   def filterTextUrl(content: Content): Boolean = {
-    if (content.getContentType.contains("text") || content.getContentType.contains("ml"))
+    if ((content.getContentType.contains("text") || content.getContentType.contains("ml"))
+      && (!content.getContentType.contains("vnd")))
       return true
     false
   }
 
-  def toCdrV2(url: String, content: Content, dumpParam: CdrDumpParam): Map[String, Any] = {
+  def toCdrV2(url: String, content: Content, dumpParam: CdrDumpParam, inLinks: Inlinks): Map[String, Any] = {
     val gson: Gson = new Gson()
     //LOG.info("Processing URL: " + url)
     val timestamp = CommonUtil.formatTimestamp(content.getMetadata.get("Date"))
@@ -71,6 +76,27 @@ object SegmentReader extends Loggable with Serializable {
     cdrJson += (Constants.key.CDR_VERSION -> VERSION)
     cdrJson += (Constants.key.CDR_URL -> url)
     cdrJson += (Constants.key.CDR_CRAWL_TS -> timestamp)
+
+    if (content.getContentType.contains("image")) {
+      // Get InLinks from LinkDB
+
+      if (inLinks != null) {
+        val iterator: Iterator[Inlink] = inLinks.iterator().asScala
+        var inUrls: Set[String] = Set()
+        if (iterator.hasNext) {
+          val parentUrl: String = iterator.next().getFromUrl
+          cdrJson += (Constants.key.CDR_OBJ_PARENT -> parentUrl)
+          inUrls += parentUrl
+
+          while (inUrls.size <= MAX_INLINKS && iterator.hasNext) {
+            inUrls += iterator.next().getFromUrl
+          }
+          val inLinksJson: JSONObject = new JSONObject()
+          inLinksJson.put("inLinks", inUrls.toArray)
+          cdrJson += (Constants.key.CDR_CRAWL_DATA -> inLinksJson)
+        }
+      }
+    }
     cdrJson
   }
 
@@ -88,9 +114,9 @@ object SegmentReader extends Loggable with Serializable {
     cdrRDD.collect()
   }
 
-  def listFromDir(segmentDir: String, config: Configuration): List[Path] = {
+  def listFromDir(segmentDir: String, config: Configuration, subDir: String): List[Path] = {
     var parts: List[Path] = List()
-    val partPattern: String = ".*" + File.separator + Content.DIR_NAME +
+    val partPattern: String = ".*" + File.separator + subDir +
       File.separator + "part-[0-9]{5}" + File.separator + "data"
     val fs: FileSystem = FileSystem.get(config)
     val segmentDirPath: Path = new Path(segmentDir.toString)
@@ -105,6 +131,10 @@ object SegmentReader extends Loggable with Serializable {
       }
     }
     parts
+  }
+
+  def listFromDir(segmentDir: String, config: Configuration): List[Path] = {
+    listFromDir(segmentDir, config, Content.DIR_NAME)
   }
 
   def listFromFile(segmentFile: String): List[Path] = {

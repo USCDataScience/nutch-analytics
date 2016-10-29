@@ -14,13 +14,15 @@ import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 import org.kohsuke.args4j.Option
+import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 /**
   * Created by karanjeetsingh on 9/25/16.
   */
-class CosineSimilarity extends CliTool {
+class TopDomains extends CliTool {
 
-  import CosineSimilarity._
+  import TopDomains._
 
   @Option(name = "-m", aliases = Array("--master"))
   var sparkMaster: String = "local[*]"
@@ -90,75 +92,68 @@ class CosineSimilarity extends CliTool {
     println("Steps: Filtered URLs")
 
     val parsedRDD = filteredRDD.map({case(text, content) => (text, ParseUtil.parse(content).getFirst)})
+      .reduceByKey((key1, key2) => key1)
+    println("Steps: Parsing Documents")
 
-    println("Steps: Reading KB")
     val modelRDD = sc.textFile(knowledgeBase)
-      .map({case doc => (doc.toString.split("|_|")(0), ParseUtil.tokenize(doc.toString.split("|_|")(1)))})
+      .map({case doc => (doc.toString.split("|_|")(0), doc.toString.split("|_|")(1))})
 
-    println("Steps: Hashing TF")
-    val tf: JavaRDD[Vector] = new HashingTF().transform(modelRDD.map({case (url, terms) => terms}))
+    val modelTfRDD = modelRDD.map{case (url, text) => (url, ParseUtil.tokenize(text))}
+    println("Steps: Read KB")
+
+    val tf: JavaRDD[Vector] = new HashingTF().transform(modelTfRDD.map({case (url, terms) => terms}))
     //println("TF - " + tf.first().toString)
     //println("TF - " + tf.take(2).toString)
     tf.cache()
     val idf = new IDF().fit(tf)
+    println("Steps: Hashing TF & create IDF")
 
     //println("IDF - " + idf.idf.toString)
 
     val kbRDD = modelRDD
-      .map({case (url, terms) => (url, new HashingTF().transform(terms))})
-      .map({case (url, vectors) => (url, idf.transform(vectors))})
+      .map{ case (url, text) => ParseUtil.tokenize(text).asScala}
+      .fold(Iterable[String]())(_ ++ _)
+      //.reduce((s1, s2) => s1 + " " + s2)
+        //.split(" ")
+      //.collect()
+      .map((terms) => (new HashingTF().transform(terms)))
+      //.map((vectors) => (idf.transform(vectors)))
 
+    kbRDD.take(10).foreach(println)
 
+    //val kbMagnitude: Double = math.sqrt(kbRDD.values.map(value => value * value).sum)
+    //println("Magnitude: " + kbMagnitude)
+    //val attr: SimilarityAttributes = new SimilarityAttributes(kbMagnitude)
+/*
     val docsRDD = parsedRDD
-      .reduceByKey((key1, key2) => key1)
       .map({case (url, text) => (url, ParseUtil.tokenize(text))})
       //.map({case (url, vectors) => (url, CommonUtil.termFrequency(vectors))})
       .map({case (url, terms) => (url, new HashingTF().transform(terms))})
       .map({case (url, vectors) => (url, idf.transform(vectors))})
 
 
-    // For Average Function
-    type ScoreCollector = (Int, Double)
-    type HostScores = (String, (Int, Double))
-
-    val createScoreCombiner = (score: Double) => (1, score)
-
-    val scoreCombiner = (collector: ScoreCollector, score: Double) => {
-      val (numberScores, totalScore) = collector
-      (numberScores + 1, totalScore + score)
-    }
-
-    val scoreMerger = (collector1: ScoreCollector, collector2: ScoreCollector) => {
-      val (numScores1, totalScore1) = collector1
-      val (numScores2, totalScore2) = collector2
-      (numScores1 + numScores2, totalScore1 + totalScore2)
-    }
-
-    val averagingFunction = (hostScore: HostScores) => {
-      val (name, (numberScores, totalScore)) = hostScore
-      (name, totalScore / numberScores)
-    }
-
-
 
     val product = kbRDD.cartesian(docsRDD)
-      .map({case ((kbUrl, kbVector), (docUrl, docVector)) => ((docUrl), dotProduct(docVector, kbVector))})
-      .mapValues((_, 1))
-      .reduceByKey((x, y) => (x._1 + y._1, x._2 + y._2))
-      .mapValues{ case (sum, count) => (1.0 * sum) / count }
+      .map({case ((kbVector), (docUrl, docVector)) => ((docUrl), dotProduct(docVector, kbVector, attr))})
+      //.mapValues((_, 1))
+      //.reduceByKey((x, y) => (x._1 + y._1, x._2 + y._2))
+      //.mapValues{ case (sum, count) => (1.0 * sum) / count }
       //.sortBy(_._2, false)
-      .map{ case (url, score) => (CommonUtil.getHost(url), score)}
-      .combineByKey(createScoreCombiner, scoreCombiner, scoreMerger)
+      .map{ case (url, score) => (CommonUtil.getHost(url), url, score)}
+      //.combineByKey(createScoreCombiner, scoreCombiner, scoreMerger)
       //.collectAsMap()
-      .map(averagingFunction)
-      .map(item => item.swap)
-      .sortByKey(false, 1)
-      .map(item => item.swap)
+      //.map(averagingFunction)
+      //.map(item => item.swap)
+      //.sortByKey(false, 1)
+      //.map(item => item.swap)
 
     //val cosineList: Array[(String, Double)] = product.collect()
 
-    product.collect().foreach({case (url, score) => appendToFile(outputDir + File.separator + "hosts.txt", url + " - " + score)})
+    //product.collect().foreach({case (host, url, score) => appendToFile(outputDir + File.separator
+    //  + "hosts.txt", host + " - " + url + " - " + score)})
 
+    product.saveAsTextFile(outputDir)
+*/
     /*
     println("Top URLs: ")
     cosineList.take(20).foreach(println)
@@ -175,7 +170,7 @@ class CosineSimilarity extends CliTool {
 }
 
 
-object CosineSimilarity extends Loggable with Serializable {
+object TopDomains extends Loggable with Serializable {
 
   /**
     * Used for reading/writing to database, files, etc.
@@ -192,7 +187,7 @@ object CosineSimilarity extends Loggable with Serializable {
       }
     }
 
-  def dotProduct(docVector: Vector, kbVector: Vector): Double = {
+  def dotProduct(docVector: Vector, kbVector: Vector, attr: SimilarityAttributes): Double = {
     /*if (i == 0) {
       i += 1
       println("Dot Product - " + kbVector.toJson.toString)
@@ -213,14 +208,14 @@ object CosineSimilarity extends Loggable with Serializable {
     }
     if (product != 0.0) {
       val docMagnitude: Double = math.sqrt(docValues.map(value => value * value).sum)
-      val kbMagnitude: Double = math.sqrt(kbValues.map(value => value * value).sum)
+      val kbMagnitude: Double = attr.kbMagnitude
       product = product / (docMagnitude * kbMagnitude)
     }
     product
   }
 
   def main(args: Array[String]) {
-    new CosineSimilarity().run(args)
+    new TopDomains().run(args)
   }
 
 }

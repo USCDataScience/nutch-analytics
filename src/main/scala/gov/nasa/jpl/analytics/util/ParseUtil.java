@@ -18,6 +18,7 @@
 package gov.nasa.jpl.analytics.util;
 
 import com.google.common.base.Splitter;
+import com.google.common.collect.FluentIterable;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.math3.util.Pair;
 import org.apache.nutch.protocol.Content;
@@ -30,6 +31,8 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Iterator;
+import java.util.Map;
 
 /**
  * Created by karanjeetsingh on 9/1/16.
@@ -42,7 +45,8 @@ public class ParseUtil {
     public static Pair<String, Metadata> parse(Content content) {
         ByteArrayInputStream stream = new ByteArrayInputStream(content.getContent());
         try {
-            if (content.getContentType().contains("text") || content.getContentType().contains("ml"))
+            if ((content.getContentType().contains("text") || content.getContentType().contains("ml")) &&
+                    (!content.getContentType().contains("vnd")))
                 return parse(stream);
             else
                 return new Pair<String, Metadata>("", new Metadata());
@@ -83,6 +87,16 @@ public class ParseUtil {
     public static Iterable<String> tokenize(String text) {
         text = text.replaceAll("\\n", " ");
         return spaceSplitter.split(text);
+    }
+
+    public static String[] tokens(String text) {
+        text = text.replaceAll("\\n", " ");
+        return FluentIterable.from(spaceSplitter.split(text)).toArray(String.class);
+    }
+
+    public static Iterator<Map<String, Integer>> generateIdf(String url, String[] terms) {
+
+        return null;
     }
 
 }
