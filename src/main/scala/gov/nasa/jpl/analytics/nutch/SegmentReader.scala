@@ -52,8 +52,17 @@ object SegmentReader extends Loggable with Serializable {
   }
 
   def filterImages(content: Content): Boolean = {
-    if (content.getContentType == null || content.getContentType.isEmpty || !content.getContentType.contains("image"))
+    filterImages(content.getContentType)
+  }
+
+  def filterImages(doc: org.json.simple.JSONObject): Boolean = {
+    filterImages(doc.get(Constants.key.CDR_CONTENT_TYPE).toString)
+  }
+
+  def filterImages(contentType: String): Boolean = {
+    if (contentType == null || contentType.isEmpty || !contentType.contains("image")) {
       return false
+    }
     true
   }
 
@@ -88,6 +97,44 @@ object SegmentReader extends Loggable with Serializable {
     flatDocs
 
     //return List(pair._1.split("\n") + (f) for line in pair._2.splitlines())
+  }
+
+  def toGson(doc: String): Map[String, Any] = {
+    val gson: Gson = new Gson()
+    val newGson: Map[String, Any] = gson.fromJson[Map[String, Any]](doc, Map.getClass)
+    newGson
+  }
+
+  def addParentUrl(doc: org.json.simple.JSONObject, map: java.util.HashMap[String, String]): Map[String, Any] = {
+    val url: String = doc.get(Constants.key.CDR_OBJ_PARENT).toString
+    val hash: String = CommonUtil.hashString(url + "-" + map.get(url))
+    val temp: String = doc.get(Constants.key.CDR_CRAWL_DATA).toString
+
+    var newGson: Map[String, Any] = Map()
+    val iter = doc.keySet().iterator()
+
+    while (iter.hasNext) {
+      val key: String = iter.next().toString
+      if (!key.equals(Constants.key.CDR_OBJ_PARENT) && !key.equals(Constants.key.CDR_CRAWL_DATA)) {
+        newGson += (key -> doc.get(key))
+      }
+    }
+
+    newGson += (Constants.key.CDR_OBJ_PARENT -> hash)
+
+    if (temp != null && !temp.isEmpty) {
+      val inlinks = temp.substring(temp.indexOf('[') + 1, temp.lastIndexOf(']')).split(",")
+      var inUrls: Set[String] = Set()
+      for (inlink <- inlinks) {
+        val hash: String = CommonUtil.hashString(inlink.trim + "-" + map.get(inlink.trim))
+        inUrls += hash
+      }
+      val inLinksJson: JSONObject = new JSONObject()
+      inLinksJson.put(Constants.key.CDR_INLINKS, inUrls.toArray)
+      newGson += (Constants.key.CDR_CRAWL_DATA -> inLinksJson)
+    }
+
+    newGson
   }
 
   def toCdrV2(url: String, content: Content, dumpParam: CdrDumpParam, inLinks: Inlinks): Map[String, Any] = {

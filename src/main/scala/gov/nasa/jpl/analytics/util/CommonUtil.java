@@ -162,12 +162,12 @@ public class CommonUtil {
     }
 
     public static JSONObject toJson(String json) throws org.json.simple.parser.ParseException {
-
+        //return (JSONObject) jsonParser.parse(json);
         return (new JSONObject(new Gson().fromJson(json, Map.class)));
     }
 
     public static String joinString(CdrDumpParam s1, String s2) {
-        return s1.part() + "-" + s2;
+        return s1 + "-" + s2;
     }
 
     public static void main(String[] args) {
