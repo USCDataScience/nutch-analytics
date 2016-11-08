@@ -28,7 +28,7 @@ public interface Constants {
 
         String CDR_DOC_TYPE = "doc_type";
 
-        String CDR_CONTENT_TYPE = "content-type";
+        String CDR_CONTENT_TYPE = "content_type";
 
         String CDR_CRAWL_DATA = "crawl_data";
 
@@ -53,6 +53,16 @@ public interface Constants {
         String CDR_URL = "url";
 
         String CDR_VERSION = "version";
+
+        String CDR_INLINKS = "inlinks";
+
+
+        // Expanded Version
+        String CDR_HOST = "host";
+
+        String CDR_OUTLINKS = "outlinks";
+
+
 
     }
 

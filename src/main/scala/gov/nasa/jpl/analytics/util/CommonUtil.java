@@ -22,6 +22,8 @@ import org.apache.hadoop.fs.Path;
 import org.apache.nutch.segment.SegmentMerger;
 import org.apache.nutch.util.NutchConfiguration;
 import org.apache.nutch.util.TableUtil;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +45,7 @@ public class CommonUtil {
 
     private static Logger LOG = LoggerFactory.getLogger(CommonUtil.class);
     private static boolean SIMPLE_DATE_FORMAT = true;
+    private static JSONParser jsonParser = new JSONParser();
 
     public static String formatTimestamp(String sdate) {
         if (SIMPLE_DATE_FORMAT) {
@@ -153,6 +156,10 @@ public class CommonUtil {
 
     private static String ifNullString(String value) {
         return (value != null) ? value : "";
+    }
+
+    public static JSONObject toJson(String json) throws org.json.simple.parser.ParseException {
+        return (JSONObject) jsonParser.parse(json);
     }
 
     public static void main(String[] args) {
