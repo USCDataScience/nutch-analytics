@@ -109,12 +109,12 @@ class DumpImages extends CliTool {
     //TODO: If content type is image, get inLinks
     val filteredRDD =segRDD.filter({case(text, content) => SegmentReader.filterImages(content)})
 
-    //val cdrRDD = filteredRDD.map({case(text, content) =>
-    //  (CommonUtil.hashString(text + "-" + CommonUtil.formatTimestamp(content.getMetadata.get("Date"))),
-    //  content.getContent)})
-
     val cdrRDD = filteredRDD.map({case(text, content) =>
-        (CommonUtil.hashString(text), content.getContent)})
+      (CommonUtil.hashString(text + "-" + CommonUtil.formatTimestamp(content.getMetadata.get("Date"))),
+      content.getContent)})
+
+    //val cdrRDD = filteredRDD.map({case(text, content) =>
+    //    (CommonUtil.hashString(text), content.getContent)})
 
     val docs:Array[(String, Array[Byte])] = cdrRDD.collect()
 

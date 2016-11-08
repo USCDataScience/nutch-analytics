@@ -8,5 +8,7 @@ import gov.nasa.jpl.analytics.base.Loggable
 class CdrDumpParam extends Loggable with Serializable {
 
   var docType: String = _
+  var part: String = _
+  var hashes: java.util.Map[java.lang.String, java.lang.String] = _
 
 }

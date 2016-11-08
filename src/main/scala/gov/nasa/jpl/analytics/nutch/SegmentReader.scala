@@ -65,10 +65,29 @@ object SegmentReader extends Loggable with Serializable {
   }
 
   def filterDocs(url: String, hashes: java.util.Map[String, String]): Boolean = {
-    if (hashes.containsKey(url)) {
-      true
+    if (hashes.containsKey(url.trim)) {
+      return true
+    } else {
+      println(url)
+      println(hashes.size())
+      return false
     }
-    false
+  }
+
+  def flatten(pair: Tuple2[String, String]): Iterable[(String, String)] = {
+    //f, text = pair
+    val path = pair._1.toString
+    val docs: Array[String] = pair._2.split("\n")
+
+    var flatDocs: List[(String, String)] = List()
+
+    for (doc <- docs) {
+      flatDocs :+= (path, doc)
+    }
+
+    flatDocs
+
+    //return List(pair._1.split("\n") + (f) for line in pair._2.splitlines())
   }
 
   def toCdrV2(url: String, content: Content, dumpParam: CdrDumpParam, inLinks: Inlinks): Map[String, Any] = {
@@ -76,8 +95,8 @@ object SegmentReader extends Loggable with Serializable {
     //LOG.info("Processing URL: " + url)
     val timestamp = CommonUtil.formatTimestamp(content.getMetadata.get("Date"))
     val parsedContent: Pair[String, Metadata] = ParseUtil.parse(content)
-    //var cdrJson: Map[String, Any] = Map(Constants.key.CDR_ID -> CommonUtil.hashString(url + "-" + timestamp))
-    var cdrJson: Map[String, Any] = Map(Constants.key.CDR_ID -> CommonUtil.hashString(url))
+    var cdrJson: Map[String, Any] = Map(Constants.key.CDR_ID -> CommonUtil.hashString(url + "-" + timestamp))
+    //var cdrJson: Map[String, Any] = Map(Constants.key.CDR_ID -> CommonUtil.hashString(url))
     cdrJson += (Constants.key.CDR_DOC_TYPE -> dumpParam.docType)
     cdrJson += (Constants.key.CDR_CONTENT_TYPE -> content.getContentType)
     cdrJson += (Constants.key.CDR_RAW_CONTENT -> new String(content.getContent))
@@ -97,13 +116,14 @@ object SegmentReader extends Loggable with Serializable {
         val iterator: Iterator[Inlink] = inLinks.iterator().asScala
         var inUrls: Set[String] = Set()
         if (iterator.hasNext) {
-          //val parentUrl: String = iterator.next().getFromUrl
-          val parentUrl: String = CommonUtil.hashString(iterator.next().getFromUrl)
+          val parentUrl: String = iterator.next().getFromUrl
+          //val parentUrl: String = CommonUtil.hashString(iterator.next().getFromUrl)
           cdrJson += (Constants.key.CDR_OBJ_PARENT -> parentUrl)
           inUrls += parentUrl
 
           while (inUrls.size <= MAX_INLINKS && iterator.hasNext) {
-            inUrls += CommonUtil.hashString(iterator.next().getFromUrl)
+            inUrls += iterator.next().getFromUrl
+            //inUrls += CommonUtil.hashString(iterator.next().getFromUrl)
           }
           val inLinksJson: JSONObject = new JSONObject()
           inLinksJson.put(Constants.key.CDR_INLINKS, inUrls.toArray)

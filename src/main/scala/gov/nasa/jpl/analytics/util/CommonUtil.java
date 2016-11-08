@@ -17,6 +17,8 @@
 
 package gov.nasa.jpl.analytics.util;
 
+import com.google.gson.Gson;
+import gov.nasa.jpl.analytics.model.CdrDumpParam;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.nutch.segment.SegmentMerger;
@@ -37,6 +39,7 @@ import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by karanjeetsingh on 8/31/16.
@@ -159,7 +162,12 @@ public class CommonUtil {
     }
 
     public static JSONObject toJson(String json) throws org.json.simple.parser.ParseException {
-        return (JSONObject) jsonParser.parse(json);
+
+        return (new JSONObject(new Gson().fromJson(json, Map.class)));
+    }
+
+    public static String joinString(CdrDumpParam s1, String s2) {
+        return s1.part() + "-" + s2;
     }
 
     public static void main(String[] args) {

@@ -18,8 +18,10 @@
 package gov.nasa.jpl.analytics.tools.dump
 
 import java.io._
+import java.util
 
 import gov.nasa.jpl.analytics.base.{Loggable, CliTool}
+import gov.nasa.jpl.analytics.model.CdrDumpParam
 import gov.nasa.jpl.analytics.nutch.SegmentReader
 import gov.nasa.jpl.analytics.util.{CommonUtil, Constants}
 import org.apache.hadoop.conf.Configuration
@@ -76,6 +78,7 @@ class Dedup extends CliTool {
     // Initialize SparkContext
     init()
     val config: Configuration = sc.hadoopConfiguration
+    val dumpParam: CdrDumpParam = new CdrDumpParam()
 
     // Check & Create Output Directory
     val fs: FileSystem = FileSystem.get(config)
@@ -98,15 +101,22 @@ class Dedup extends CliTool {
     }
 
     val hashRDD: RDD[Tuple2[String, String]] = sc.sequenceFile(hash.toString + File.separator + "part*")
-    val hashes = hashRDD.collectAsMap().asJava
+    val hashes = hashRDD.collectAsMap()
+
+    val jmap = new util.HashMap[String, String]()
+    for ((k, v) <- hashes) {
+      jmap.put(k, v)
+    }
 
     // Converting all Segment parts to RDDs
     var rdds: Seq[RDD[Tuple2[String, String]]] = Seq()
     for (part <- parts) {
+      dumpParam.part = part.toString
       val docRDD = sc.textFile(part.toString).map(doc => CommonUtil.toJson(doc.toString))
-        .filter(doc => SegmentReader.filterDocs(part.toString + "-" + doc.get(Constants.key.CDR_ID).toString, hashes))
+        .filter(doc => SegmentReader.filterDocs(dumpParam.part + "-" + doc.get(Constants.key.CDR_ID).toString, jmap))
         .map(doc => doc.toJSONString)
-      docRDD.saveAsTextFile(outputDir)
+      docRDD.saveAsTextFile(outputDir + File.separator +
+        dumpParam.part.substring(dumpParam.part.lastIndexOf(File.separator) + 1))
       //rdds :+= sc.sequenceFile[String, Content](part.toString)
     }
 

@@ -73,6 +73,7 @@ class UniqueUrls extends CliTool {
     // Initialize SparkContext
     init()
     val config: Configuration = sc.hadoopConfiguration
+    val dumpParam: CdrDumpParam = new CdrDumpParam()
 
     // Check & Create Output Directory
     val fs: FileSystem = FileSystem.get(config)
@@ -97,10 +98,22 @@ class UniqueUrls extends CliTool {
     // Converting all Segment parts to RDDs
     var rdds: Seq[RDD[Tuple2[String, String]]] = Seq()
     for (part <- parts) {
+      val tempRDD = sc.wholeTextFiles(part.toString)
+      tempRDD.flatMap(SegmentReader.flatten).take(1).foreach(println)
+
+      rdds :+= sc.wholeTextFiles(part.toString)
+        .flatMap(SegmentReader.flatten)
+        .map{doc => (CommonUtil.toJson(doc._2.toString), doc._1.toString)}
+        .map(doc => (CommonUtil.hashString(doc._1.get(Constants.key.CDR_URL).toString) +
+          CommonUtil.hashString(doc._1.get(Constants.key.CDR_RAW_CONTENT).toString),
+          doc._2 + "-" + doc._1.get(Constants.key.CDR_ID).toString))
+        //.map((jdoc, fn) => ("a", "b"))
+/*
       rdds :+= sc.textFile(part.toString).map(doc => CommonUtil.toJson(doc.toString))
         .map(doc => (CommonUtil.hashString(doc.get(Constants.key.CDR_URL).toString) +
             CommonUtil.hashString(doc.get(Constants.key.CDR_RAW_CONTENT).toString),
-          part.toString + "-" + doc.get(Constants.key.CDR_ID).toString))
+          dumpParam.parts(i) + "-" + doc.get(Constants.key.CDR_ID).toString))
+          */
       //rdds :+= sc.sequenceFile[String, Content](part.toString)
     }
     println("Number of Segments to process: " + rdds.length)
@@ -110,11 +123,11 @@ class UniqueUrls extends CliTool {
 
     // Filtering & Operations
     //TODO: If content type is image, get inLinks
-    val dedupRDD = segRDD.reduceByKey((key1, key2) => key1)
+    val dedupRDD = segRDD.reduceByKey((k1, k2) => k1)
       .map{pair => pair.swap}
 
-
     dedupRDD.saveAsSequenceFile(outputDir)
+    //dedupRDD.saveAsTextFile(outputDir)
 
     // Write to Local File System
     /*
