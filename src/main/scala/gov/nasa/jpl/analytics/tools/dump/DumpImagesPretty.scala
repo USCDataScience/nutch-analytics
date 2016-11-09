@@ -75,6 +75,7 @@ class DumpImagesPretty extends CliTool {
     init()
     val config: Configuration = sc.hadoopConfiguration
 
+    /*
     // Check & Create Output Directory
     val fs: FileSystem = FileSystem.get(config)
     val outPath: Path = new Path(outputDir)
@@ -82,6 +83,7 @@ class DumpImagesPretty extends CliTool {
       println("Please provide a non existing directory path")
       System.exit(1)
     }
+    */
     CommonUtil.makeSafeDir(outputDir)
 
     // Generate a list of segment parts
