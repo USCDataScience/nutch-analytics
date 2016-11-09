@@ -127,21 +127,22 @@ class ImageParent extends CliTool {
         //.map{doc => CommonUtil.toJson(doc.toString)}
         //.take(2).foreach(println)
 
-      dumpRdds :+= tempRDD
+      val dumpRDD = tempRDD
         .map{doc => CommonUtil.toJson(doc.toString)}
         .filter(doc => SegmentReader.filterImages(doc))
         .map(doc => SegmentReader.addParentUrl(doc, urlTsMap))
         .map(doc => (new JSONObject(doc)).toJSONString)
 
+      dumpRDD.saveAsTextFile(outputDir + File.separator
+        + part.toString.substring(part.toString.lastIndexOf(File.separator) + 1))
 
     }
 
     // Union of all RDDs & Joining it with LinkDb
-    val dumpRDD:RDD[String] = sc.union(dumpRdds)
+    //val dumpRDD:RDD[String] = sc.union(dumpRdds)
 
     // Filtering & Operations
     //TODO: If content type is image, get inLinks
-    dumpRDD.saveAsTextFile(outputDir)
 
 
     sc.stop()
