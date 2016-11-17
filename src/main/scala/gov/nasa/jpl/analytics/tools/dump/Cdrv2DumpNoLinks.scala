@@ -111,9 +111,9 @@ class Cdrv2DumpNoLinks extends CliTool {
 
     // Filtering & Operations
     //TODO: If content type is image, get inLinks
-    //val filteredRDD =segRDD.filter({case(text, content) => SegmentReader.filterUrl(content)})
-    val cdrRDD = segRDD.map({case(text, content) => SegmentReader.toCdrV2(text, content, dumpParam)})
-    //val cdrRDD = filteredRDD.map({case(text, content) => SegmentReader.toCdrV2(text, content, dumpParam)})
+    val filteredRDD =segRDD.filter({case(text, content) => SegmentReader.filterNonImages(content)})
+    //val cdrRDD = segRDD.map({case(text, content) => SegmentReader.toCdrV2(text, content, dumpParam)})
+    val cdrRDD = filteredRDD.map({case(text, content) => SegmentReader.toCdrV2(text, content, dumpParam)})
 
     // Deduplication & Dumping Segments
     val dumpRDD = cdrRDD.map(doc => (doc.get(Constants.key.CDR_ID).toString, doc))

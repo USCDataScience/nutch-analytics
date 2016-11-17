@@ -52,6 +52,13 @@ object SegmentReader extends Loggable with Serializable {
     true
   }
 
+  def filterNonImages(content: Content): Boolean = {
+    if (content.getContentType == null || content.getContentType.isEmpty ||  content.getContentType.contains("image")
+    || content.getContent.length < 150)
+      return false
+    true
+  }
+
   def filterImages(content: Content): Boolean = {
     filterImages(content.getContentType)
   }
