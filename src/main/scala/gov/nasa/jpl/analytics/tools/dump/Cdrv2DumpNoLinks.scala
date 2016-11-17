@@ -38,9 +38,9 @@ import scala.collection.JavaConversions._
 /**
   * Created by karanjeetsingh on 8/31/16.
   */
-class Cdrv2Dump extends CliTool {
+class Cdrv2DumpNoLinks extends CliTool {
 
-  import Cdrv2Dump._
+  import Cdrv2DumpNoLinks._
 
   @Option(name = "-m", aliases = Array("--master"))
   var sparkMaster: String = "local[*]"
@@ -50,9 +50,6 @@ class Cdrv2Dump extends CliTool {
 
   @Option(name = "-f", aliases = Array("--segmentFile"))
   var segmentFile: String = ""
-
-  @Option(name = "-l", aliases = Array("--linkDb"))
-  var linkDb: String = ""
 
   @Option(name = "-t", aliases = Array("--type"))
   var docType: String = ""
@@ -91,17 +88,6 @@ class Cdrv2Dump extends CliTool {
     }
     //CommonUtil.makeSafeDir(outputDir)
 
-    // Reading LinkDb
-    var linkDbParts: List[Path] = List()
-    linkDbParts = SegmentReader.listFromDir(linkDb, config, LinkDb.CURRENT_NAME)
-
-    var linkDbRdds: Seq[RDD[Tuple2[String, Inlinks]]] = Seq()
-    for (part <- linkDbParts) {
-      linkDbRdds :+= sc.sequenceFile[String, Inlinks](part.toString)
-    }
-    println("Number of LinkDb Segments to process: " + linkDbRdds.length)
-    val linkDbRdd = sc.union(linkDbRdds)
-
     // Generate a list of segment parts
     var parts: List[Path] = List()
     if (!segmentDir.isEmpty) {
@@ -121,22 +107,18 @@ class Cdrv2Dump extends CliTool {
     println("Number of Segments to process: " + rdds.length)
 
     // Union of all RDDs & Joining it with LinkDb
-    val segRDD:RDD[Tuple3[String, Content, Inlinks]] = sc.union(rdds).leftOuterJoin(linkDbRdd).
-      map{case (k, (ls, rs)) => (k, ls, rs match {
-        case Some(rs) => rs
-        case None => null
-      })}
+    val segRDD:RDD[Tuple2[String, Content]] = sc.union(rdds)
 
     // Filtering & Operations
     //TODO: If content type is image, get inLinks
-    val filteredRDD =segRDD.filter({case(text, content, inlinks) => SegmentReader.filterUrl(content)})
-    val cdrRDD = filteredRDD.map({case(text, content, inlinks) => SegmentReader.toCdrV2(text, content, dumpParam,
-      inlinks)})
+    //val filteredRDD =segRDD.filter({case(text, content) => SegmentReader.filterUrl(content)})
+    val cdrRDD = segRDD.map({case(text, content) => SegmentReader.toCdrV2(text, content, dumpParam)})
+    //val cdrRDD = filteredRDD.map({case(text, content) => SegmentReader.toCdrV2(text, content, dumpParam)})
 
     // Deduplication & Dumping Segments
     val dumpRDD = cdrRDD.map(doc => (doc.get(Constants.key.CDR_ID).toString, doc))
-                        //.reduceByKey((key1, key2) => key1)
-                        .map({case(id, doc) => new JSONObject(doc).toJSONString})
+      //.reduceByKey((key1, key2) => key1)
+      .map({case(id, doc) => new JSONObject(doc).toJSONString})
 
     dumpRDD.saveAsTextFile(outputDir)
 
@@ -154,7 +136,7 @@ class Cdrv2Dump extends CliTool {
 
 }
 
-object Cdrv2Dump extends Loggable with Serializable {
+object Cdrv2DumpNoLinks extends Loggable with Serializable {
 
   /**
     * Used for reading/writing to database, files, etc.
@@ -166,10 +148,10 @@ object Cdrv2Dump extends Loggable with Serializable {
 
   def appendJson(filename: String, data: String) =
     using(new FileWriter(filename, true)) {
-    fileWriter => using(new PrintWriter(fileWriter)) {
-      printWriter => printWriter.println(data)
+      fileWriter => using(new PrintWriter(fileWriter)) {
+        printWriter => printWriter.println(data)
+      }
     }
-  }
 
   def printJson(map: Map[String, Any]): Unit = {
     val obj:JSONObject = new JSONObject(map)
@@ -177,7 +159,7 @@ object Cdrv2Dump extends Loggable with Serializable {
   }
 
   def main(args: Array[String]) {
-    new Cdrv2Dump().run(args)
+    new Cdrv2DumpNoLinks().run(args)
   }
 
 }

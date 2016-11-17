@@ -46,7 +46,8 @@ object SegmentReader extends Loggable with Serializable {
   val MAX_INLINKS: Int = 5000
 
   def filterUrl(content: Content): Boolean = {
-    if (content.getContent == null || content.getContent.isEmpty || content.getContent.length < 150)
+    if (content.getContentType == null || (!content.getContentType.contains("image") &&
+      (content.getContent == null || content.getContent.isEmpty || content.getContent.length < 150)))
       return false
     true
   }
@@ -135,6 +136,10 @@ object SegmentReader extends Loggable with Serializable {
     }
 
     newGson
+  }
+
+  def toCdrV2(url: String, content: Content, dumpParam: CdrDumpParam): Map[String, Any] = {
+    toCdrV2(url, content, dumpParam, null)
   }
 
   def toCdrV2(url: String, content: Content, dumpParam: CdrDumpParam, inLinks: Inlinks): Map[String, Any] = {
