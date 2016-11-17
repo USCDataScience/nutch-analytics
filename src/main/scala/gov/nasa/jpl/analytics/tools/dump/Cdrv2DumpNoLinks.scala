@@ -25,7 +25,7 @@ import gov.nasa.jpl.analytics.nutch.SegmentReader
 import gov.nasa.jpl.analytics.util.{Constants}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
-import org.apache.nutch.crawl.{Inlink, LinkDb, Inlinks}
+import org.apache.nutch.crawl.{CrawlDatum, Inlink, LinkDb, Inlinks}
 import org.apache.nutch.metadata.Metadata
 import org.apache.nutch.protocol.Content
 import org.apache.spark.rdd.RDD
@@ -48,6 +48,9 @@ class Cdrv2DumpNoLinks extends CliTool {
   @Option(name = "-s", aliases = Array("--segmentDir"))
   var segmentDir: String = ""
 
+  @Option(name = "-c", aliases = Array("--crawlDb"))
+  var crawlDb: String = ""
+
   @Option(name = "-f", aliases = Array("--segmentFile"))
   var segmentFile: String = ""
 
@@ -67,7 +70,8 @@ class Cdrv2DumpNoLinks extends CliTool {
       .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       .set("spark.kryo.classesToRegister", "java.util.HashSet,java.util.HashMap")
       .set("spark.kryoserializer.buffer.max", "2040m")
-    conf.registerKryoClasses(Array(classOf[Content], classOf[Inlinks], classOf[Inlink], classOf[Metadata]))
+    conf.registerKryoClasses(Array(classOf[Content], classOf[Inlinks], classOf[Inlink], classOf[Metadata],
+      classOf[CrawlDatum]))
     sc = new SparkContext(conf)
   }
 
@@ -88,6 +92,21 @@ class Cdrv2DumpNoLinks extends CliTool {
     }
     //CommonUtil.makeSafeDir(outputDir)
 
+
+    // Reading CrawlDb
+    var crawlDbParts: List[Path] = List()
+    crawlDbParts = SegmentReader.listFromDir(crawlDb, config, "current")
+
+    var crawlDbRdds: Seq[RDD[Tuple2[String, CrawlDatum]]] = Seq()
+    for (part <- crawlDbParts) {
+      crawlDbRdds :+= sc.sequenceFile[String, CrawlDatum](part.toString)
+    }
+    println("Number of CrawlDb Segments to process: " + crawlDbRdds.length)
+    val crawlDbRdd = sc.union(crawlDbRdds)
+
+    //println("URLs in CRAWL DB: " + crawlDbRdd.count())
+
+
     // Generate a list of segment parts
     var parts: List[Path] = List()
     if (!segmentDir.isEmpty) {
@@ -106,30 +125,36 @@ class Cdrv2DumpNoLinks extends CliTool {
     }
     println("Number of Segments to process: " + rdds.length)
 
+    //println("URLs in Segments: " + sc.union(rdds).count())
+
     // Union of all RDDs & Joining it with LinkDb
+    /*
     val segRDD:RDD[Tuple2[String, Content]] = sc.union(rdds)
 
     // Filtering & Operations
-    //TODO: If content type is image, get inLinks
     val filteredRDD =segRDD.filter({case(text, content) => SegmentReader.filterNonImages(content)})
-    //val cdrRDD = segRDD.map({case(text, content) => SegmentReader.toCdrV2(text, content, dumpParam)})
     val cdrRDD = filteredRDD.map({case(text, content) => SegmentReader.toCdrV2(text, content, dumpParam)})
 
-    // Deduplication & Dumping Segments
     val dumpRDD = cdrRDD.map(doc => (doc.get(Constants.key.CDR_ID).toString, doc))
-      //.reduceByKey((key1, key2) => key1)
       .map({case(id, doc) => new JSONObject(doc).toJSONString})
 
     dumpRDD.saveAsTextFile(outputDir)
-
-    // Write to Local File System
-    /*
-    val writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputDir + File.separator + "out.json")))
-    for (doc <- docs) {
-      writer.write(doc + "\n")
-    }
-    writer.close()
     */
+
+    val segRDD:RDD[Tuple3[String, Content, CrawlDatum]] = sc.union(rdds).leftOuterJoin(crawlDbRdd)
+      .map{case (k, (ls, rs)) => (k, ls, rs match {
+        case Some(rs) => rs
+        case None => null
+      })}
+
+    // Filtering & Operations
+    val filteredRDD =segRDD.filter({case(text, content, datum) => SegmentReader.filterNonImages(content)})
+    val cdrRDD = filteredRDD.map({case(text, content, datum) => SegmentReader.toCdrV2(text, content, dumpParam, datum)})
+
+    val dumpRDD = cdrRDD.map(doc => (doc.get(Constants.key.CDR_ID).toString, doc))
+      .map({case(id, doc) => new JSONObject(doc).toJSONString})
+
+    dumpRDD.saveAsTextFile(outputDir)
 
     sc.stop()
   }

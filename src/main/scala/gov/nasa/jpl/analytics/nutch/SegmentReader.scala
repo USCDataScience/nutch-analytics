@@ -27,7 +27,7 @@ import gov.nasa.jpl.analytics.util.{ParseUtil, CommonUtil, Constants}
 import org.apache.commons.math3.util.Pair
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{LocatedFileStatus, RemoteIterator, FileSystem, Path}
-import org.apache.nutch.crawl.{Inlinks, Inlink}
+import org.apache.nutch.crawl.{CrawlDatum, Inlinks, Inlink}
 import org.apache.nutch.protocol.Content
 import org.apache.spark.SparkContext
 import org.apache.tika.metadata.Metadata
@@ -145,14 +145,24 @@ object SegmentReader extends Loggable with Serializable {
     newGson
   }
 
-  def toCdrV2(url: String, content: Content, dumpParam: CdrDumpParam): Map[String, Any] = {
-    toCdrV2(url, content, dumpParam, null)
+  def toCdrV2(url: String, content: Content, dumpParam: CdrDumpParam, crawlDatum: CrawlDatum): Map[String, Any] = {
+    toCdrV2(url, content, dumpParam, null, crawlDatum)
   }
 
   def toCdrV2(url: String, content: Content, dumpParam: CdrDumpParam, inLinks: Inlinks): Map[String, Any] = {
+    toCdrV2(url, content, dumpParam, inLinks, null)
+  }
+
+  def toCdrV2(url: String, content: Content, dumpParam: CdrDumpParam, inLinks: Inlinks, crawlDatum: CrawlDatum): Map[String, Any] = {
     val gson: Gson = new Gson()
     //LOG.info("Processing URL: " + url)
-    val timestamp = CommonUtil.formatTimestamp(content.getMetadata.get("Date"))
+    var timestamp = ""
+    if (crawlDatum == null) {
+      timestamp = CommonUtil.formatTimestamp(content.getMetadata.get("Date"))
+    } else {
+      timestamp = "" + crawlDatum.getFetchTime
+    }
+    //val timestamp = CommonUtil.formatTimestamp(content.getMetadata.get("Date"))
     val parsedContent: Pair[String, Metadata] = ParseUtil.parse(content)
     var cdrJson: Map[String, Any] = Map(Constants.key.CDR_ID -> CommonUtil.hashString(url + "-" + timestamp))
     //var cdrJson: Map[String, Any] = Map(Constants.key.CDR_ID -> CommonUtil.hashString(url))
