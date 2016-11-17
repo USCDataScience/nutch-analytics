@@ -27,7 +27,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.nutch.crawl.{CrawlDatum, Inlink, LinkDb, Inlinks}
 import org.apache.nutch.metadata.Metadata
-import org.apache.nutch.protocol.Content
+import org.apache.nutch.protocol.{ProtocolStatus, Content}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 import org.json.simple.JSONObject
@@ -71,7 +71,7 @@ class Cdrv2DumpNoLinks extends CliTool {
       .set("spark.kryo.classesToRegister", "java.util.HashSet,java.util.HashMap")
       .set("spark.kryoserializer.buffer.max", "2040m")
     conf.registerKryoClasses(Array(classOf[Content], classOf[Inlinks], classOf[Inlink], classOf[Metadata],
-      classOf[CrawlDatum]))
+      classOf[CrawlDatum], classOf[ProtocolStatus]))
     sc = new SparkContext(conf)
   }
 
