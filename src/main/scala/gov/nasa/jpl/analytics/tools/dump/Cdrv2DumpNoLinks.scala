@@ -48,11 +48,16 @@ class Cdrv2DumpNoLinks extends CliTool {
   @Option(name = "-s", aliases = Array("--segmentDir"))
   var segmentDir: String = ""
 
+  /*
   @Option(name = "-c", aliases = Array("--crawlDb"))
   var crawlDb: String = ""
+  */
 
   @Option(name = "-f", aliases = Array("--segmentFile"))
   var segmentFile: String = ""
+
+  @Option(name = "-l", aliases = Array("--linkDb"))
+  var linkDb: String = ""
 
   @Option(name = "-t", aliases = Array("--type"))
   var docType: String = ""
@@ -94,6 +99,7 @@ class Cdrv2DumpNoLinks extends CliTool {
 
 
     // Reading CrawlDb
+    /*
     var crawlDbParts: List[Path] = List()
     crawlDbParts = SegmentReader.listFromDir(crawlDb, config, "current")
 
@@ -105,6 +111,19 @@ class Cdrv2DumpNoLinks extends CliTool {
     val crawlDbRdd = sc.union(crawlDbRdds)
 
     //println("URLs in CRAWL DB: " + crawlDbRdd.count())
+    */
+
+
+    // Reading LinkDb
+    var linkDbParts: List[Path] = List()
+    linkDbParts = SegmentReader.listFromDir(linkDb, config, LinkDb.CURRENT_NAME)
+
+    var linkDbRdds: Seq[RDD[Tuple2[String, Inlinks]]] = Seq()
+    for (part <- linkDbParts) {
+      linkDbRdds :+= sc.sequenceFile[String, Inlinks](part.toString)
+    }
+    println("Number of LinkDb Segments to process: " + linkDbRdds.length)
+    val linkDbRdd = sc.union(linkDbRdds)
 
 
     // Generate a list of segment parts
@@ -128,8 +147,8 @@ class Cdrv2DumpNoLinks extends CliTool {
     //println("URLs in Segments: " + sc.union(rdds).count())
 
     // Union of all RDDs & Joining it with LinkDb
-    /*
-    val segRDD:RDD[Tuple2[String, Content]] = sc.union(rdds)
+
+    val segRDD:RDD[Tuple2[String, Content]] = sc.union(rdds).subtractByKey(linkDbRdd)
 
     // Filtering & Operations
     val filteredRDD =segRDD.filter({case(text, content) => SegmentReader.filterNonImages(content)})
@@ -139,8 +158,9 @@ class Cdrv2DumpNoLinks extends CliTool {
       .map({case(id, doc) => new JSONObject(doc).toJSONString})
 
     dumpRDD.saveAsTextFile(outputDir)
-    */
 
+
+    /*
     val segRDD:RDD[Tuple3[String, Content, CrawlDatum]] = sc.union(rdds).leftOuterJoin(crawlDbRdd)
       .map{case (k, (ls, rs)) => (k, ls, rs match {
         case Some(rs) => rs
@@ -155,6 +175,7 @@ class Cdrv2DumpNoLinks extends CliTool {
       .map({case(id, doc) => new JSONObject(doc).toJSONString})
 
     dumpRDD.saveAsTextFile(outputDir)
+    */
 
     sc.stop()
   }

@@ -121,15 +121,20 @@ class Cdrv2Dump extends CliTool {
     println("Number of Segments to process: " + rdds.length)
 
     // Union of all RDDs & Joining it with LinkDb
+    val segRDD:RDD[Tuple3[String, Content, Inlinks]] = sc.union(rdds).join(linkDbRdd).
+      map{case (k, (ls, rs)) => (k, ls, rs)}
+    /*
     val segRDD:RDD[Tuple3[String, Content, Inlinks]] = sc.union(rdds).leftOuterJoin(linkDbRdd).
       map{case (k, (ls, rs)) => (k, ls, rs match {
         case Some(rs) => rs
         case None => null
       })}
+    */
 
     // Filtering & Operations
     //TODO: If content type is image, get inLinks
     val filteredRDD =segRDD.filter({case(text, content, inlinks) => SegmentReader.filterUrl(content)})
+    //val filteredRDD =segRDD.filter({case(text, content, inlinks) => SegmentReader.filterNonImages(content)})
     val cdrRDD = filteredRDD.map({case(text, content, inlinks) => SegmentReader.toCdrV2(text, content, dumpParam,
       inlinks)})
 

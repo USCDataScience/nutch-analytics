@@ -145,6 +145,10 @@ object SegmentReader extends Loggable with Serializable {
     newGson
   }
 
+  def toCdrV2(url: String, content: Content, dumpParam: CdrDumpParam): Map[String, Any] = {
+    toCdrV2(url, content, dumpParam, null, null)
+  }
+
   def toCdrV2(url: String, content: Content, dumpParam: CdrDumpParam, crawlDatum: CrawlDatum): Map[String, Any] = {
     toCdrV2(url, content, dumpParam, null, crawlDatum)
   }
