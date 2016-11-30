@@ -73,6 +73,12 @@ class CrawlDumper extends CliTool {
     sc = new SparkContext(conf)
   }
 
+
+  def getFileTree(f: File): Stream[File] =
+    f #:: (if (f.isDirectory) f.listFiles().toStream.flatMap(getFileTree)
+    else Stream.empty)
+
+
   override def run(): Unit = {
 
     // Initialize Spark Context
@@ -91,11 +97,15 @@ class CrawlDumper extends CliTool {
 
 
     // Reading CrawlDb
-    var crawlDbParts: List[Path] = List()
-    crawlDbParts = SegmentReader.listFromDir(crawlDb, config, "current")
+    var crawlDbParts: Stream[File] = Stream()
+    //crawlDbParts = SegmentReader.listFromDir(crawlDb, config, "current")
+    val partPattern: String = ".*" + File.separator + "current" +
+      File.separator + "part-[0-9]{5}" + File.separator + "data"
+    crawlDbParts = getFileTree(new File(crawlDb)).filter(_.getAbsolutePath.matches(partPattern))
     var crawlDbRdds: Seq[RDD[Tuple2[String, CrawlDatum]]] = Seq()
     for (part <- crawlDbParts) {
-      crawlDbRdds :+= sc.sequenceFile[String, CrawlDatum](part.toString)
+      println(part.getAbsolutePath)
+      crawlDbRdds :+= sc.sequenceFile[String, CrawlDatum](part.getAbsolutePath)
     }
     println("Number of CrawlDb Segments to process: " + crawlDbRdds.length)
     val crawlDbRdd = sc.union(crawlDbRdds)
@@ -119,11 +129,17 @@ class CrawlDumper extends CliTool {
     println("Number of Segments to process: " + segRdds.length)
     val segRdd = sc.union(segRdds)
 
-    val rdd:RDD[Tuple4[String, Content, CrawlDatum, Inlinks]] = segRdd.join(crawlDbRdd).leftOuterJoin(linkDbRdd)
+    val rdd:RDD[Tuple4[String, Content, CrawlDatum, Inlinks]] = segRdd
+      .join(crawlDbRdd)
+      .leftOuterJoin(linkDbRdd)
       .map{case (url, ((content, crawlDatum), inLinks)) => (url, content, crawlDatum, inLinks match {
         case Some(inLinks) => inLinks
         case None => null
       })}
+
+    
+
+
 
     /*val rdd:RDD[Tuple4[String, Content, CrawlDatum, Inlinks]] = segRdd.leftOuterJoin(crawlDbRdd).leftOuterJoin(linkDbRdd)
       .map{case (url, ((content, crawlDatum), inLinks)) => (url, content, crawlDatum match {
