@@ -96,16 +96,18 @@ class CrawlDumper extends CliTool {
     val linkDbRdd = sc.union(linkDbRdds)
 
 
+    // If Read CrawlDb Locally
+    //var crawlDbParts: Stream[File] = Stream()
+    //val partPattern: String = ".*" + File.separator + "current" +
+    //  File.separator + "part-[0-9]{5}" + File.separator + "data"
+    //crawlDbParts = getFileTree(new File(crawlDb)).filter(_.getAbsolutePath.matches(partPattern))
+
     // Reading CrawlDb
-    var crawlDbParts: Stream[File] = Stream()
-    //crawlDbParts = SegmentReader.listFromDir(crawlDb, config, "current")
-    val partPattern: String = ".*" + File.separator + "current" +
-      File.separator + "part-[0-9]{5}" + File.separator + "data"
-    crawlDbParts = getFileTree(new File(crawlDb)).filter(_.getAbsolutePath.matches(partPattern))
+    var crawlDbParts: List[Path] = List()
+    crawlDbParts = SegmentReader.listFromDir(crawlDb, config, "current")
     var crawlDbRdds: Seq[RDD[Tuple2[String, CrawlDatum]]] = Seq()
     for (part <- crawlDbParts) {
-      println(part.getAbsolutePath)
-      crawlDbRdds :+= sc.sequenceFile[String, CrawlDatum](part.getAbsolutePath)
+      crawlDbRdds :+= sc.sequenceFile[String, CrawlDatum](part.toString)
     }
     println("Number of CrawlDb Segments to process: " + crawlDbRdds.length)
     val crawlDbRdd = sc.union(crawlDbRdds)
@@ -137,7 +139,7 @@ class CrawlDumper extends CliTool {
         case None => null
       })}
 
-    
+
 
 
 
