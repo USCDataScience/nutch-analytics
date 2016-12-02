@@ -57,12 +57,18 @@ class CrawlDumper extends CliTool {
   @Option(name = "-cdb", aliases = Array("--crawlDb"))
   var crawlDb: String = ""
 
+  @Option(name = "-id", aliases = Array("--crawlId"))
+  var crawlId: String = ""
+
+  @Option(name = "-o", aliases = Array("--outputDir"))
+  var outputDir: String = ""
+
 
   var sc: SparkContext = _
 
   def init(): Unit = {
     val conf = new SparkConf()
-    conf.setAppName("CDRv2Dumper")
+    conf.setAppName("CrawlDumper")
       .setMaster(sparkMaster)
       .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       .set("spark.kryo.classesToRegister", "java.util.HashSet,java.util.HashMap")
@@ -140,6 +146,18 @@ class CrawlDumper extends CliTool {
       })}
 
 
+    // Broadcast Variables
+    val crawlIdVar = sc.broadcast(crawlId)
+
+    val dumpRDD = rdd.filter({case(url, content, crawlDatum, inLinks) => SegmentReader.filterUrl(content)})
+      .mapPartitions({row => row.map(x => (x._1, x._2, x._3, x._4, crawlIdVar.value))}, preservesPartitioning = true)
+      .map({case(url, content, crawlDatum, inLinks, crawlId) => SegmentReader.toSparkler(url, content,
+        crawlDatum, inLinks, crawlId.toString())})
+
+    // Deduplication & Dumping Segments
+    dumpRDD.map(doc =>  new JSONObject(doc).toJSONString).saveAsTextFile(outputDir)
+
+
 
 
 
@@ -154,7 +172,7 @@ class CrawlDumper extends CliTool {
 
     
 
-    println("Total number of URLs: " + rdd.collect().length)
+    //println("Total number of URLs: " + rdd.collect().length)
 
     // Stop Spark Context
     sc.stop()

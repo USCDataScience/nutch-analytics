@@ -49,6 +49,11 @@ public class CommonUtil {
     private static Logger LOG = LoggerFactory.getLogger(CommonUtil.class);
     private static boolean SIMPLE_DATE_FORMAT = true;
     private static JSONParser jsonParser = new JSONParser();
+    public static Map<String, String> statusMap = new HashMap<>();
+
+    static {
+        statusMap.put("db_fetched", "FETCHED");
+    }
 
     public static String formatTimestamp(String sdate) {
         if (SIMPLE_DATE_FORMAT) {
@@ -63,6 +68,11 @@ public class CommonUtil {
         } else {
             return ifNullString(sdate);
         }
+    }
+
+    public static String toSolrTimestamp(Long epoch) {
+        SimpleDateFormat out = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+        return out.format(epoch);
     }
 
     public static String reverseUrl(String url) {

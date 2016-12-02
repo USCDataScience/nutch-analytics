@@ -18,22 +18,26 @@
 package gov.nasa.jpl.analytics.nutch
 
 import java.io.{FileNotFoundException, File}
-import java.util.Scanner
+import java.util.{Date, Calendar, Scanner}
 
 import com.google.gson.Gson
 import gov.nasa.jpl.analytics.base.Loggable
-import gov.nasa.jpl.analytics.model.{CdrDumpParam, CdrV2Format}
+import gov.nasa.jpl.analytics.model.{ParsedData, CdrDumpParam, CdrV2Format}
+import gov.nasa.jpl.analytics.solr.schema.FieldMapper
 import gov.nasa.jpl.analytics.util.{ParseUtil, CommonUtil, Constants}
+import org.apache.commons.lang.ArrayUtils
 import org.apache.commons.math3.util.Pair
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{LocatedFileStatus, RemoteIterator, FileSystem, Path}
-import org.apache.nutch.crawl.{CrawlDatum, Inlinks, Inlink}
+import org.apache.nutch.crawl.{FetchSchedule, CrawlDatum, Inlinks, Inlink}
 import org.apache.nutch.protocol.Content
 import org.apache.spark.SparkContext
 import org.apache.tika.metadata.Metadata
+import org.joda.time.format.DateTimeFormat
 import org.json.JSONObject
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 /**
   * Created by karanjeetsingh on 8/30/16.
@@ -46,7 +50,8 @@ object SegmentReader extends Loggable with Serializable {
   val MAX_INLINKS: Int = 5000
 
   def filterUrl(content: Content): Boolean = {
-    if (content.getContentType == null || (!content.getContentType.contains("image") &&
+    if (content.getContentType == null || ((content.getContentType.contains("text") || content.getContentType.contains("ml"))
+      && (!content.getContentType.contains("vnd")) &&
       (content.getContent == null || content.getContent.isEmpty || content.getContent.length < 150)))
       return false
     true
@@ -247,6 +252,98 @@ object SegmentReader extends Loggable with Serializable {
       }
     }
     cdrJson
+  }
+
+  def timeToStr(epochMillis: Long): String =
+    DateTimeFormat.forPattern("YYYY-MM-dd HH:mm:ss").print(epochMillis)
+
+  // Converts into Sparkler Schema Format
+  def toSparkler(url: String, content: Content, crawlDatum: CrawlDatum, inLinks: Inlinks, crawlId: String): Map[String, Any] = {
+    val gson: Gson = new Gson()
+    val fetchTimestamp = crawlDatum.getFetchTime
+    val id = CommonUtil.hashString(url + "-" + crawlId + "-" + fetchTimestamp)
+    val parsedContent: ParsedData = ParseUtil.parseContent(url, content)
+    var lastModifiedTime = "0"
+    try {
+      val pst: String = crawlDatum.getMetaData.get("pst").toString
+      lastModifiedTime = pst.split("=")(1)
+    } catch {
+      case e: Exception => {
+      }
+    }
+
+    var sparklerJson: Map[String, Any] = Map()
+    sparklerJson += (Constants.key.SPKLR_ID -> id)
+    sparklerJson += (Constants.key.SPKLR_CONTENT_TYPE -> content.getContentType)
+    sparklerJson += (Constants.key.SPKLR_CRAWLER -> CRAWLER)
+    sparklerJson += (Constants.key.SPKLR_CRAWL_ID -> crawlId)
+    sparklerJson += (Constants.key.SPKLR_EXTRACTED_TEXT -> parsedContent.plainText)
+
+    // Get Extracted Metadata + Flatten
+    var mdFields: Map[String, AnyRef] = Map()
+    for (name: String <- parsedContent.metadata.names()) {
+      mdFields += (name -> (if (parsedContent.metadata.isMultiValued(name)) parsedContent.metadata.getValues(name) else parsedContent.metadata.get(name)))
+    }
+    val fieldMapper: FieldMapper = FieldMapper.initialize()
+    val mappedMdFields: mutable.Map[String, AnyRef] = fieldMapper.mapFields(mdFields.asJava, true).asScala
+    mappedMdFields.foreach{case (k, v) => {
+      var key: String = k
+      if (!k.endsWith(Constants.key.MD_SUFFIX)) {
+        key = k + Constants.key.MD_SUFFIX
+      }
+      sparklerJson += (key -> v)
+    }}
+
+    sparklerJson += (Constants.key.SPKLR_URL -> url)
+    sparklerJson += (Constants.key.SPKLR_FETCH_TIMESTAMP -> CommonUtil.toSolrTimestamp(fetchTimestamp))
+
+    if (filterTextUrl(content)) {
+      sparklerJson += (Constants.key.SPKLR_RAW_CONTENT -> new String(content.getContent))
+    }
+
+    sparklerJson += (Constants.key.SPKLR_STATUS_NAME -> CommonUtil.statusMap.get(CrawlDatum.statNames.get(crawlDatum.getStatus)))
+    sparklerJson += (Constants.key.SPKLR_STATUS_CODE -> crawlDatum.getMetaData.get("nutch.protocol.code"))
+
+    sparklerJson += (Constants.key.SPKLR_SCORE -> crawlDatum.getScore)
+    sparklerJson += (Constants.key.SPKLR_HOSTNAME -> CommonUtil.getHost(url))
+
+    sparklerJson += (Constants.key.SPKLR_GROUP -> CommonUtil.getHost(url))
+
+    sparklerJson += (Constants.key.SPKLR_MODIFIED_TIME -> CommonUtil.toSolrTimestamp(lastModifiedTime.toLong))
+
+    sparklerJson += (Constants.key.SPKLR_RETRIES_SINCE_FETCH -> crawlDatum.getRetriesSinceFetch)
+
+
+    sparklerJson += (Constants.key.SPKLR_RETRY_INTERVAL_SECONDS -> crawlDatum.getFetchInterval)
+    sparklerJson += (Constants.key.SPKLR_RETRY_INTERVAL_DAYS -> (crawlDatum.getFetchInterval / FetchSchedule.SECONDS_PER_DAY))
+    sparklerJson += (Constants.key.SPKLR_SIGNATURE -> CommonUtil.hashString(new String(content.getContent)))
+    sparklerJson += (Constants.key.SPKLR_VERSION -> "1.0")
+
+    // Get InLinks from LinkDB
+    if (inLinks != null) {
+      val iterator: Iterator[Inlink] = inLinks.iterator().asScala
+      var inUrls: Set[String] = Set()
+      if (iterator.hasNext) {
+        val parentUrl: String = iterator.next().getFromUrl
+        sparklerJson += (Constants.key.SPKLR_OBJ_PARENT -> parentUrl)
+        inUrls += ('"' + parentUrl + '"')
+
+        while (inUrls.size <= MAX_INLINKS && iterator.hasNext) {
+          inUrls += ('"' + iterator.next().getFromUrl + '"')
+        }
+        val inLinksJson: JSONObject = new JSONObject()
+        sparklerJson += (Constants.key.SPKLR_INLINKS -> inUrls.asJava)
+      }
+    }
+
+    sparklerJson += (Constants.key.SPKLR_OUTLINKS -> parsedContent.outlinks)
+
+    // crawler_discover_depth and crawler_fetch_depth ??
+
+    sparklerJson += (Constants.key.SPKLR_OBJ_RELATIVE_PATH -> CommonUtil.reverseUrl(url))
+    sparklerJson += (Constants.key.SPKLR_INDEXED_AT -> CommonUtil.toSolrTimestamp(Calendar.getInstance().getTimeInMillis))
+
+    sparklerJson
   }
 
   def getUrl(sc: SparkContext, segmentPath: String): Array[String] = {

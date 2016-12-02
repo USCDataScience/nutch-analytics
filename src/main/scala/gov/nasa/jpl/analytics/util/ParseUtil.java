@@ -19,20 +19,28 @@ package gov.nasa.jpl.analytics.util;
 
 import com.google.common.base.Splitter;
 import com.google.common.collect.FluentIterable;
+import gov.nasa.jpl.analytics.model.ParsedData;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.math3.util.Pair;
 import org.apache.nutch.protocol.Content;
 import org.apache.tika.Tika;
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.metadata.Metadata;
+import org.apache.tika.parser.AutoDetectParser;
+import org.apache.tika.sax.BodyContentHandler;
+import org.apache.tika.sax.Link;
+import org.apache.tika.sax.LinkContentHandler;
+import org.apache.tika.sax.WriteOutContentHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Created by karanjeetsingh on 9/1/16.
@@ -41,6 +49,53 @@ public class ParseUtil {
 
     private static Logger LOG = LoggerFactory.getLogger(ParseUtil.class);
     private static Splitter spaceSplitter = Splitter.on(' ').omitEmptyStrings().trimResults();
+
+    public static ParsedData parseContent(String url, Content content) {
+        ParsedData parsedData = new ParsedData();
+        InputStream stream = new ByteArrayInputStream(content.getContent());
+        LinkContentHandler linkHandler = new LinkContentHandler();
+        AutoDetectParser parser = new AutoDetectParser();
+        Metadata meta = new Metadata();
+        WriteOutContentHandler outHandler = new WriteOutContentHandler(-1);
+        BodyContentHandler contentHandler = new BodyContentHandler(outHandler);
+        Set<String> outlinks = new HashSet<>();
+        String plainText = "";
+        try {
+            // Parse OutLinks
+            meta.set("resourceName", url);
+            parser.parse(stream, linkHandler, meta);
+            for (Link link: linkHandler.getLinks()) {
+                String outlink = link.getUri().trim();
+                if (!outlink.isEmpty() && (outlink.startsWith("http") || outlink.startsWith("ftp"))) {
+                    outlinks.add('"' + link.getUri().trim() + '"');
+                }
+            }
+        } catch (Exception e) {
+            LOG.warn("PARSING-OUTLINKS-ERROR");
+            LOG.warn(e.getMessage(), e);
+        } finally {
+            IOUtils.closeQuietly(stream);
+        }
+        try {
+            meta  = new Metadata();
+            // Parse Text
+            stream = new ByteArrayInputStream(content.getContent());
+            meta.set("resourceName", url);
+            parser.parse(stream, contentHandler, meta);
+            plainText = outHandler.toString();
+        } catch (Exception e) {
+            LOG.warn("PARSING-CONTENT-ERROR");
+            LOG.warn(e.getMessage(), e);
+        } finally {
+            IOUtils.closeQuietly(stream);
+        }
+
+        parsedData.metadata = meta;
+        parsedData.outlinks = outlinks;
+        parsedData.plainText = plainText;
+
+        return parsedData;
+    }
 
     public static Pair<String, Metadata> parse(Content content) {
         ByteArrayInputStream stream = new ByteArrayInputStream(content.getContent());
