@@ -262,7 +262,6 @@ object SegmentReader extends Loggable with Serializable {
     val fetchTimestamp = crawlDatum.getFetchTime
     val id = CommonUtil.hashString(url + "-" + crawlId + "-" + fetchTimestamp)
     val parser: TikaParser = TikaParser.getInstance
-    val parsedContent: ParsedData = ParseUtil.parseContent(url, content)
     var lastModifiedTime = "0"
     try {
       val pst: String = crawlDatum.getMetaData.get("pst").toString
@@ -277,28 +276,30 @@ object SegmentReader extends Loggable with Serializable {
     sparklerJson += (Constants.key.SPKLR_CONTENT_TYPE -> content.getContentType)
     sparklerJson += (Constants.key.SPKLR_CRAWLER -> CRAWLER)
     sparklerJson += (Constants.key.SPKLR_CRAWL_ID -> crawlId)
-    sparklerJson += (Constants.key.SPKLR_EXTRACTED_TEXT -> parsedContent.plainText)
-
-    // Get Extracted Metadata + Flatten
-    var mdFields: Map[String, AnyRef] = Map()
-    for (name: String <- parsedContent.metadata.names()) {
-      mdFields += (name -> (if (parsedContent.metadata.isMultiValued(name)) parsedContent.metadata.getValues(name) else parsedContent.metadata.get(name)))
-    }
-    val fieldMapper: FieldMapper = FieldMapper.initialize()
-    val mappedMdFields: mutable.Map[String, AnyRef] = fieldMapper.mapFields(mdFields.asJava, true).asScala
-    mappedMdFields.foreach{case (k, v) => {
-      var key: String = k
-      if (!k.endsWith(Constants.key.MD_SUFFIX)) {
-        key = k + Constants.key.MD_SUFFIX
-      }
-      sparklerJson += (key -> v)
-    }}
 
     sparklerJson += (Constants.key.SPKLR_URL -> url)
     sparklerJson += (Constants.key.SPKLR_FETCH_TIMESTAMP -> CommonUtil.toSolrTimestamp(fetchTimestamp))
 
     if (filterTextUrl(content)) {
       sparklerJson += (Constants.key.SPKLR_RAW_CONTENT -> new String(content.getContent))
+      val parsedContent: ParsedData = ParseUtil.parseContent(url, content)
+
+      // Get Extracted Metadata + Flatten
+      var mdFields: Map[String, AnyRef] = Map()
+      for (name: String <- parsedContent.metadata.names()) {
+        mdFields += (name -> (if (parsedContent.metadata.isMultiValued(name)) parsedContent.metadata.getValues(name) else parsedContent.metadata.get(name)))
+      }
+      val fieldMapper: FieldMapper = FieldMapper.initialize()
+      val mappedMdFields: mutable.Map[String, AnyRef] = fieldMapper.mapFields(mdFields.asJava, true).asScala
+      mappedMdFields.foreach{case (k, v) => {
+        var key: String = k
+        if (!k.endsWith(Constants.key.MD_SUFFIX)) {
+          key = k + Constants.key.MD_SUFFIX
+        }
+        sparklerJson += (key -> v)
+      }}
+      
+      sparklerJson += (Constants.key.SPKLR_EXTRACTED_TEXT -> parsedContent.plainText)
       sparklerJson += (Constants.key.SPKLR_OUTLINKS -> parser.getOutlinks(content))
     }
 
