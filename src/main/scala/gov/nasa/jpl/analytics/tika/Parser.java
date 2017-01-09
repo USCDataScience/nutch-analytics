@@ -1,7 +1,11 @@
 package gov.nasa.jpl.analytics.tika;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.nutch.parse.*;
+import org.apache.nutch.parse.ParseUtil;
+import org.apache.nutch.parse.ParseSegment;
+import org.apache.nutch.parse.Parse;
+import org.apache.nutch.parse.ParseResult;
+import org.apache.nutch.parse.Outlink;
 import org.apache.nutch.protocol.Content;
 import org.apache.nutch.util.NutchConfiguration;
 import org.slf4j.Logger;
