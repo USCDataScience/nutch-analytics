@@ -17,6 +17,10 @@
 
 package gov.nasa.jpl.analytics.util;
 
+import com.google.common.collect.Sets;
+
+import java.util.Set;
+
 /**
  * Created by karanjeetsingh on 8/31/16.
  */
@@ -76,6 +80,8 @@ public interface Constants {
 
 
         String MD_SUFFIX = "_md";
+
+        Set<String> TEXT_MIME_TYPES = Sets.newHashSet("text/asp", "text/aspdotnet", "text/calendar", "text/css", "text/csv", "text/directory", "text/dns", "text/ecmascript", "text/enriched", "text/example", "text/html", "text/iso19139+xml", "text/parityfec", "text/plain", "text/prs.fallenstein.rst", "text/prs.lines.tag", "text/red", "text/rfc822-headers", "text/richtext", "text/rtp-enc-aescm128", "text/rtx", "text/sgml", "text/t140", "text/tab-separated-values", "text/troff", "text/ulpfec", "text/uri-list", "text/vnd.abc", "text/vnd.curl", "text/vnd.curl.dcurl", "text/vnd.curl.mcurl", "text/vnd.curl.scurl", "text/vnd.dmclientscript", "text/vnd.esmertec.theme-descriptor", "text/vnd.fly", "text/vnd.fmi.flexstor", "text/vnd.graphviz", "text/vnd.in3d.3dml", "text/vnd.in3d.spot", "text/vnd.iptc.anpa", "text/vnd.iptc.newsml", "text/vnd.iptc.nitf", "text/vnd.latex-z", "text/vnd.motorola.reflex", "text/vnd.ms-mediapackage", "text/vnd.net2phone.commcenter.command", "text/vnd.si.uricatalogue", "text/vnd.sun.j2me.app-descriptor", "text/vnd.trolltech.linguist", "text/vnd.wap.si", "text/vnd.wap.sl", "text/vnd.wap.wml", "text/vnd.wap.wmlscript", "text/vtt", "text/x-actionscript", "text/x-ada", "text/x-applescript", "text/x-asciidoc", "text/x-aspectj", "text/x-assembly", "text/x-awk", "text/x-basic", "text/x-c++hdr", "text/x-c++src", "text/x-cgi", "text/x-chdr", "text/x-clojure", "text/x-cobol", "text/x-coffeescript", "text/x-coldfusion", "text/x-common-lisp", "text/x-csharp", "text/x-csrc", "text/x-d", "text/x-diff", "text/x-eiffel", "text/x-emacs-lisp", "text/x-erlang", "text/x-expect", "text/x-forth", "text/x-fortran", "text/x-go", "text/x-groovy", "text/x-haml", "text/x-haskell", "text/x-haxe", "text/x-idl", "text/x-ini", "text/x-java-properties", "text/x-java-source", "text/x-jsp", "text/x-less", "text/x-lex", "text/x-log", "text/x-lua", "text/x-matlab", "text/x-ml", "text/x-modula", "text/x-objcsrc", "text/x-ocaml", "text/x-pascal", "text/x-perl", "text/x-php", "text/x-prolog", "text/x-python", "text/x-rexx", "text/x-rsrc", "text/x-rst", "text/x-ruby", "text/x-scala", "text/x-scheme", "text/x-sed", "text/x-setext", "text/x-sql", "text/x-stsrc", "text/x-tcl", "text/x-tika-text-based-message", "text/x-uuencode", "text/x-vbasic", "text/x-vbdotnet", "text/x-vbscript", "text/x-vcalendar", "text/x-vcard", "text/x-verilog", "text/x-vhdl", "text/x-web-markdown", "text/x-yacc", "text/x-yaml", "application/xhtml+xml", "application/xml", "application/xml-dtd", "application/x-bibtex-text-file");
     }
 
 }

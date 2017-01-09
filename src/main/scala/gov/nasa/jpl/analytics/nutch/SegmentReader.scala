@@ -24,6 +24,7 @@ import com.google.gson.Gson
 import gov.nasa.jpl.analytics.base.Loggable
 import gov.nasa.jpl.analytics.model.{ParsedData, CdrDumpParam, CdrV2Format}
 import gov.nasa.jpl.analytics.solr.schema.FieldMapper
+import gov.nasa.jpl.analytics.tika.Parser
 import gov.nasa.jpl.analytics.util.{ParseUtil, CommonUtil, Constants}
 import org.apache.commons.lang.ArrayUtils
 import org.apache.commons.math3.util.Pair
@@ -50,9 +51,8 @@ object SegmentReader extends Loggable with Serializable {
   val MAX_INLINKS: Int = 5000
 
   def filterUrl(content: Content): Boolean = {
-    if (content.getContentType == null || ((content.getContentType.contains("text") || content.getContentType.contains("ml"))
-      && (!content.getContentType.contains("vnd")) &&
-      (content.getContent == null || content.getContent.isEmpty || content.getContent.length < 150)))
+    if (content.getContentType == null || (Constants.key.TEXT_MIME_TYPES.contains(content.getContentType) &&
+      (content.getContent == null || content.getContent.isEmpty)))
       return false
     true
   }
@@ -80,8 +80,7 @@ object SegmentReader extends Loggable with Serializable {
   }
 
   def filterTextUrl(content: Content): Boolean = {
-    if ((content.getContentType.contains("text") || content.getContentType.contains("ml"))
-      && (!content.getContentType.contains("vnd")))
+    if (Constants.key.TEXT_MIME_TYPES.contains(content.getContentType))
       return true
     false
   }
@@ -262,6 +261,7 @@ object SegmentReader extends Loggable with Serializable {
     val gson: Gson = new Gson()
     val fetchTimestamp = crawlDatum.getFetchTime
     val id = CommonUtil.hashString(url + "-" + crawlId + "-" + fetchTimestamp)
+    val parser: Parser = Parser.getInstance
     val parsedContent: ParsedData = ParseUtil.parseContent(url, content)
     var lastModifiedTime = "0"
     try {
@@ -336,7 +336,8 @@ object SegmentReader extends Loggable with Serializable {
       }
     }
 
-    sparklerJson += (Constants.key.SPKLR_OUTLINKS -> parsedContent.outlinks)
+    //sparklerJson += (Constants.key.SPKLR_OUTLINKS -> parsedContent.outlinks)
+    sparklerJson += (Constants.key.SPKLR_OUTLINKS -> parser.getOutlinks(content))
 
     // crawler_discover_depth and crawler_fetch_depth ??
 

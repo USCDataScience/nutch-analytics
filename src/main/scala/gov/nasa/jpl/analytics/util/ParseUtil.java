@@ -28,7 +28,6 @@ import org.apache.tika.exception.TikaException;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.sax.BodyContentHandler;
-import org.apache.tika.sax.Link;
 import org.apache.tika.sax.LinkContentHandler;
 import org.apache.tika.sax.WriteOutContentHandler;
 import org.slf4j.Logger;
@@ -60,6 +59,7 @@ public class ParseUtil {
         BodyContentHandler contentHandler = new BodyContentHandler(outHandler);
         Set<String> outlinks = new HashSet<>();
         String plainText = "";
+        /* Parsing Outlinks using Nutch Utils
         try {
             // Parse OutLinks
             meta.set("resourceName", url);
@@ -76,6 +76,7 @@ public class ParseUtil {
         } finally {
             IOUtils.closeQuietly(stream);
         }
+        */
         try {
             meta  = new Metadata();
             // Parse Text

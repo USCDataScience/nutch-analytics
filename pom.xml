@@ -23,6 +23,10 @@
     <gson.version>2.7</gson.version>
     <guava.version>19.0</guava.version>
     <snakeyaml.version>1.17</snakeyaml.version>
+    <nekohtml.version>1.9.22</nekohtml.version>
+
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
 
     <!-- Main Class -->
     <exec.mainClass>gov.nasa.jpl.analytics.dump.Dumper</exec.mainClass>
@@ -90,6 +94,13 @@
       <groupId>org.yaml</groupId>
       <artifactId>snakeyaml</artifactId>
       <version>${snakeyaml.version}</version>
+    </dependency>
+
+    <!-- Required for HTML Parser -->
+    <dependency>
+      <groupId>net.sourceforge.nekohtml</groupId>
+      <artifactId>nekohtml</artifactId>
+      <version>${nekohtml.version}</version>
     </dependency>
 
 
