@@ -24,7 +24,7 @@ import com.google.gson.Gson
 import gov.nasa.jpl.analytics.base.Loggable
 import gov.nasa.jpl.analytics.model.{ParsedData, CdrDumpParam, CdrV2Format}
 import gov.nasa.jpl.analytics.solr.schema.FieldMapper
-import gov.nasa.jpl.analytics.tika.Parser
+import gov.nasa.jpl.analytics.tika.TikaParser
 import gov.nasa.jpl.analytics.util.{ParseUtil, CommonUtil, Constants}
 import org.apache.commons.lang.ArrayUtils
 import org.apache.commons.math3.util.Pair
@@ -261,7 +261,7 @@ object SegmentReader extends Loggable with Serializable {
     val gson: Gson = new Gson()
     val fetchTimestamp = crawlDatum.getFetchTime
     val id = CommonUtil.hashString(url + "-" + crawlId + "-" + fetchTimestamp)
-    val parser: Parser = Parser.getInstance
+    val parser: TikaParser = TikaParser.getInstance
     val parsedContent: ParsedData = ParseUtil.parseContent(url, content)
     var lastModifiedTime = "0"
     try {

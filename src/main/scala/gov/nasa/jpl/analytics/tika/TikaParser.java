@@ -20,13 +20,13 @@ import java.util.Set;
 /**
  * Created by karanjeetsingh on 1/9/17.
  */
-public class Parser {
+public class TikaParser {
 
-    public final Logger LOG = LoggerFactory.getLogger(Parser.class);
+    public final Logger LOG = LoggerFactory.getLogger(TikaParser.class);
     private ParseUtil parseUtil;
-    private static Parser INSTANCE;
+    private static TikaParser INSTANCE;
 
-    public Parser() {
+    public TikaParser() {
         try {
             //String nutchHome = System.getProperty("nutch.home", null);
             String nutchHome = System.getenv("NUTCH_HOME");
@@ -48,11 +48,11 @@ public class Parser {
         }
     }
 
-    public static Parser getInstance(){
+    public static TikaParser getInstance(){
         if (INSTANCE == null) {
-            synchronized (Parser.class) {
+            synchronized (TikaParser.class) {
                 if (INSTANCE == null) {
-                    INSTANCE = new Parser();
+                    INSTANCE = new TikaParser();
                 }
             }
         }
