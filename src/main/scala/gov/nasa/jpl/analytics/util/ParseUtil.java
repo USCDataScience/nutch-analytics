@@ -85,9 +85,13 @@ public class ParseUtil {
             parser.parse(stream, contentHandler, meta);
             plainText = outHandler.toString();
         } catch (Exception e) {
+            LOG.warn("PARSING-CONTENT-EXCEPTION");
+            LOG.warn(e.getMessage(), e);
+        } catch (Error e) {
             LOG.warn("PARSING-CONTENT-ERROR");
             LOG.warn(e.getMessage(), e);
-        } finally {
+        }
+        finally {
             IOUtils.closeQuietly(stream);
         }
 

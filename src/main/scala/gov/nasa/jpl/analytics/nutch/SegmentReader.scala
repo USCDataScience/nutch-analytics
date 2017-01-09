@@ -299,6 +299,7 @@ object SegmentReader extends Loggable with Serializable {
 
     if (filterTextUrl(content)) {
       sparklerJson += (Constants.key.SPKLR_RAW_CONTENT -> new String(content.getContent))
+      sparklerJson += (Constants.key.SPKLR_OUTLINKS -> parser.getOutlinks(content))
     }
 
     sparklerJson += (Constants.key.SPKLR_STATUS_NAME -> CommonUtil.statusMap.get(CrawlDatum.statNames.get(crawlDatum.getStatus)))
@@ -337,7 +338,6 @@ object SegmentReader extends Loggable with Serializable {
     }
 
     //sparklerJson += (Constants.key.SPKLR_OUTLINKS -> parsedContent.outlinks)
-    sparklerJson += (Constants.key.SPKLR_OUTLINKS -> parser.getOutlinks(content))
 
     // crawler_discover_depth and crawler_fetch_depth ??
 
